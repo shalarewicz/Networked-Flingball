@@ -17,7 +17,7 @@ public class LeftFlipper implements Gadget {
 	 * corner of it's bounding box. 
 	 * 
 	 * A left flipper's action alternates between rotating the flipper 90 degrees in the
-	 * counterclockwise direction and 90 degrees in the clockwise direction about it's pivot. [
+	 * counterclockwise direction and 90 degrees in the clockwise direction about it's pivot. 
 	 * During this time a flipper rotates at a speed of 1080 degrees per second. 
 	 * 
 	 * A left flipper has a default coefficient of reflection of 0.95. However, if a ball collides
