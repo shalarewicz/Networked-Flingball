@@ -1,4 +1,4 @@
-package flingball;
+package flingball.gadgets;
 
 public interface Absorber extends Gadget {
 	

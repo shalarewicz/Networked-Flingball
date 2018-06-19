@@ -1,7 +1,9 @@
 
-package flingball;
+package flingball.gadgets;
 
 import java.awt.image.BufferedImage;
+
+import flingball.Ball;
 
 //TODO Create a separate interface for absorber and wall;
 // Gadget interface, Bumper, Absorber, Wall interfaces which extend Gadget
@@ -91,12 +93,6 @@ public interface Gadget {
 	public boolean ballOverlap(Ball ball);
 
 		
-	/**
-	 * Fires all balls trapped in the gadget;
-	 */
-	//TODO Remove. It only applies for Absorbers
-	public void fireAll();
-	
 	/**
 	 * Generates an image of the gadget. 
 	 * 

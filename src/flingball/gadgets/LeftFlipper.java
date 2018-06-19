@@ -1,29 +1,33 @@
-package flingball;
+package flingball.gadgets;
 
 import java.awt.image.BufferedImage;
 
+import javax.sound.sampled.Line;
+
+import flingball.Ball;
+import flingball.Orientation;
 import physics.Circle;
 import physics.Vect;
 
-public class RightFlipper implements Gadget {
+public class LeftFlipper implements Gadget {
 	/**
-	 * A gadget which can be used on a flingball board. A right flipper has size 1 L x 2 L. 
+	 * A gadget which can be used on a flingball board. A left flipper has size 1 L x 2 L. 
 	 * a Left Flippers action rotates the flipper about it's pivot point which is in the 
-	 * northeast corner by default. The opposite end of the flipper is in the southeast
+	 * northwest corner by default. The opposite end of the flipper is in the southwest
 	 * corner. A flipper is bound by a box of size 2L x 2L and does not cross the boundary 
-	 * of this box at any point. The anchor of a right flipper is found in the upper right-hand 
+	 * of this box at any point. The anchor of a left flipper is found in the upper left-hand 
 	 * corner of it's bounding box. 
 	 * 
-	 * A right flipper's action alternates between rotating the flipper 90 degrees in the
-	 * clockwise direction and 90 degrees in the counterclockwise direction about it's pivot. 
+	 * A left flipper's action alternates between rotating the flipper 90 degrees in the
+	 * counterclockwise direction and 90 degrees in the clockwise direction about it's pivot. 
 	 * During this time a flipper rotates at a speed of 1080 degrees per second. 
 	 * 
-	 * A right flipper has a default coefficient of reflection of 0.95. However, if a ball collides
+	 * A left flipper has a default coefficient of reflection of 0.95. However, if a ball collides
 	 * with the flipper during its rotation the linear velocity of the flipper is taken into account.
 	 * 
-	 * A right flipper's orientation can be set in 90 degree intervals therefore a right flipper with 
-	 * an orientation of 270 degrees would place the pivot in the northwest corner and the opposite 
-	 * end int the northeast corner with rotation moving the end to the southwest corner. 
+	 * A left flipper's orientation can be set in 90 degree intervals therefore a left flipper with 
+	 * an orientation of 270 degrees would place the pivot in the southwest corner and the opposite 
+	 * end int the southeast corner with rotation moving the end to the northwest corner. 
 	 *
 	 * 
 	 */
@@ -38,7 +42,7 @@ public class RightFlipper implements Gadget {
 	private final int angularVelocity = 1080;
 	private final Orientation orientation = Orientation.ZERO;
 	
-	/**
+	/*w
 	 * AF(name, x, y, pivot, tail, port starboard) ::= A flipper called name with anchor (x,-y) and an 
 	 * ovular shape depicted below
 	 * 
@@ -78,7 +82,7 @@ public class RightFlipper implements Gadget {
 		// Check port and starboard are parallel (equal slopes)
 		final double slopePort = slope(port);
 		final double slopeStar = slope(starboard);
-		assert slopePort == slopeStar : "Walls of RightFlipper " + name + " are not parallel";
+		assert slopePort == slopeStar : "Walls of LeftFlipper " + name + " are not parallel";
 		
 		final Vect portPivot = port.start();
 		final Vect portTail = port.end();

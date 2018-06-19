@@ -1,4 +1,4 @@
-package flingball;
+package flingball.gadgets;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -6,6 +6,7 @@ import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 
+import flingball.Ball;
 import physics.Vect;
 
 public class AbsorberC implements Absorber {

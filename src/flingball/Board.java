@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import flingball.gadgets.Gadget;
 import physics.Vect;
 
 public class Board {
