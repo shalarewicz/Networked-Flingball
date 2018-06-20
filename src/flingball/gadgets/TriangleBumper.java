@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import flingball.Ball;
 import flingball.Orientation;
 import physics.Vect;
 

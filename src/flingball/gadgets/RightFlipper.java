@@ -190,12 +190,6 @@ public class RightFlipper implements Gadget {
 	}
 
 	@Override
-	public void fireAll() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
 	public BufferedImage generate(int L) {
 		// TODO Auto-generated method stub
 		return null;

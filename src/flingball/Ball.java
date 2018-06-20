@@ -218,7 +218,7 @@ public class Ball {
 	 * 
 	 * @return The position of the origin (top left) of the bounding box of the ball
 	 */
-	Vect getAnchor() {
+	public Vect getAnchor() {
 		return this.anchor;
 	}
 	
@@ -234,7 +234,7 @@ public class Ball {
 	 * 
 	 * @return The position of the center of the ball in Cartesian Space.
 	 */
-	Vect getCartesianCenter() {
+	public Vect getCartesianCenter() {
 		return this.cartesianCenter;
 	}
 	

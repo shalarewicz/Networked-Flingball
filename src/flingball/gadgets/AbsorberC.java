@@ -3,8 +3,10 @@ package flingball.gadgets;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import flingball.Ball;
 import physics.Vect;
@@ -16,7 +18,7 @@ public class AbsorberC implements Absorber {
 	private final int x, y, width, height;
 	private final Deque<Ball> balls = new LinkedList<Ball>();
 	private String trigger = NO_TRIGGER;
-	private final List<Wall> walls = new ArrayList<Wall>();
+	private final Set<Wall> walls = new HashSet<Wall>();
 	
 	
 	/*

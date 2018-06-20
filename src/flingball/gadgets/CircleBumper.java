@@ -7,6 +7,8 @@ package flingball.gadgets;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+
+import flingball.Ball;
 import physics.Circle;
 import physics.Physics;
 import physics.Vect;
@@ -133,7 +135,7 @@ public class CircleBumper implements Gadget {
 	
 	@Override
 	public String toString() {
-		return "Circle Bumper:" + this.name + " " + this.position() //TODO SPIN SUPPORT + ", spin=" + this.spin;
+		return "Circle Bumper:" + this.name + " " + this.position(); //TODO SPIN SUPPORT + ", spin=" + this.spin;
 	}
 	
 	@Override

@@ -2,6 +2,7 @@ package flingball.gadgets;
 
 import java.awt.image.BufferedImage;
 
+import flingball.Ball;
 import physics.Circle;
 import physics.LineSegment;
 import physics.Physics;
