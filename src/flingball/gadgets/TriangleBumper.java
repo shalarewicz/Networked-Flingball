@@ -50,12 +50,17 @@ public class TriangleBumper implements Gadget {
 	
 	/*
 	 * AF(x, y , orientation) - Triangle pumper with anchor x, -y and orientation named name
-	 * The shape is represented by the walls in wall. 
+	 * 		The shape is represented by the walls in wall. 
+	 * 
 	 * Rep Invariant
-	 * walls.size() == 3
-	 * for each endpoint of a wall there exists only one other wall with that endpoint
+	 * 		walls.size() == 3
+	 * 		for each endpoint of a wall there exists only one other wall with that endpoint
+	 * 		0 <= reflectionCoeff <= 1
+	 * 
 	 * Safety from rep exposure
-	 * 		only final or immutable fields returend. 
+	 * 		TODO
+	 * Thread Safety Argument
+	 * 		TODO
 	 */
 
 	private void checkRep() {
