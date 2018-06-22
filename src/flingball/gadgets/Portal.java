@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 
 import flingball.Ball;
 import physics.Circle;
+import physics.Physics;
 import physics.Vect;
 
 public class Portal implements Gadget {
@@ -30,6 +31,10 @@ public class Portal implements Gadget {
 	private final Circle portal;
 	private final Gadget target;
 	
+	private static final double RADIUS = 0.5;
+	private static final int HEIGHT = 1;
+	private static final int WIDTH = 1;
+	
 	/*
 	 * AF(x, y, name, portal, target) ::= 
 	 * 		A portal with anchor (x, -y) represented by the circle, portal, with diameter 1 L.
@@ -47,47 +52,54 @@ public class Portal implements Gadget {
 		assert this.portal.getRadius() == 1 : name + ": Portal radius != 1: " + this.portal.getRadius();
 		assert this.target instanceof Portal : name + ": Portal is not connected to an object of type Portal";
 	}
-
+	
+	
+	public Portal(String name, int x, int y) {
+		this.x = x;
+		this.y = -y;
+		this.name = name;
+		this.target = this;
+		this.portal = new Circle(x, y, RADIUS);
+		this.checkRep();
+	}
+	
+	
 	@Override
 	public Vect position() {
-		// TODO Auto-generated method stub
-		return null;
+		return new Vect(this.x, -this.y);
 	}
 
 	@Override
 	public String name() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.name;
 	}
 
 	@Override
 	public int height() {
-		// TODO Auto-generated method stub
-		return 0;
+		return HEIGHT;
 	}
 
 	@Override
 	public int width() {
-		// TODO Auto-generated method stub
-		return 0;
+		return WIDTH;
 	}
 
 	@Override
 	public double getReflectionCoefficient() {
-		// TODO Auto-generated method stub
+		// TODO Not used
 		return 0;
 	}
 
 	@Override
 	public void setReflectionCoefficient(double x) {
 		// TODO Auto-generated method stub
+		// Do nothing
 
 	}
 
 	@Override
 	public double collisionTime(Ball ball) {
-		// TODO Auto-generated method stub
-		return 0;
+		return ball.timeUntilCircleCollision(portal);
 	}
 
 	@Override
@@ -98,26 +110,19 @@ public class Portal implements Gadget {
 
 	@Override
 	public String getTrigger() {
-		// TODO Auto-generated method stub
-		return null;
+		return Gadget.NO_TRIGGER;
 	}
 
 	@Override
 	public void takeAction() {
-		// TODO Auto-generated method stub
-
+		// Do nothing
+		// TODO Not used
 	}
 
 	@Override
 	public boolean ballOverlap(Ball ball) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public void fireAll() {
-		// TODO Auto-generated method stub
-
+		double distance = Math.sqrt(Physics.distanceSquared(ball.getBoardCenter(), this.portal.getCenter()));
+		return distance < ball.getRadius() + RADIUS;
 	}
 
 	@Override
@@ -128,8 +133,12 @@ public class Portal implements Gadget {
 
 	@Override
 	public void setCoverage(int[][] coverage) {
-		// TODO Auto-generated method stub
-
+		int x = (int) this.position().x();
+		int y = (int) this.position().y();
+		if (coverage[y][x] == 1) {
+			throw new RuntimeException("Portal coverage overlaps with another gadget at [" + y +"]["+ x +"]");
+		}
+		coverage[y][x] = 1;
 	}
 
 }

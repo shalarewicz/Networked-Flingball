@@ -3,6 +3,7 @@ package flingball.gadgets;
 import java.awt.image.BufferedImage;
 
 import flingball.Ball;
+import physics.Angle;
 import physics.Circle;
 import physics.LineSegment;
 import physics.Physics;
@@ -196,5 +197,22 @@ public class Wall implements Gadget {
 		
 		// do nothing
 	}
-
+	
+	//TODO Spec
+	public Wall rotateAround(Vect cor, Angle a) {
+		Circle newC1 = Physics.rotateAround(this.c1, cor, a);
+		Circle newC2 = Physics.rotateAround(this.c2, cor, a);
+		
+		return new Wall(this.name, newC1.getCenter().x(), newC1.getCenter().y(), newC2.getCenter().x(), newC2.getCenter().y());
+	}
+	
+	//TODO Spec
+	public double timeUntilRotatingWallCollision(Ball ball, Vect pivot, double angularVelocity) {
+		return ball.timeUntilRotatingLineCollision(this.wall, pivot, angularVelocity);
+	}
+	
+	//TODO Spec
+	public void reflectBallRotating(Ball ball, Vect pivot, double angularVelocity, double reflectionCoeff) {
+		ball.reflectRotatingLine(this.wall, pivot, angularVelocity, reflectionCoeff);
+	}
 }
