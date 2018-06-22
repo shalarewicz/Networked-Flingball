@@ -2,6 +2,9 @@ package flingball.gadgets;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.image.BufferedImage;
 
 import javax.sound.sampled.Line;
@@ -51,8 +54,8 @@ public class LeftFlipper implements Gadget {
 	private  Wall port, starboard;
 	private final int angularVelocity = 1080;
 	private Orientation orientation = Orientation.ZERO;
-	private final boolean rotating = false;
-	private final int degreesRotated = 0;
+	private boolean rotating = true;
+	private Angle degreesRotated = Angle.ZERO;
 	
 	private final static double RADIUS = 0.25;
 	private final static int HEIGHT = 2;
@@ -186,7 +189,7 @@ public class LeftFlipper implements Gadget {
 			throw new RuntimeException("Should never get here. Invalid LeftFlipper Orientation");
 		}
 		}
-	//	this.checkRep();
+		
 	}
 	
 	
@@ -294,16 +297,21 @@ public class LeftFlipper implements Gadget {
 
 	@Override
 	public void takeAction() {
-		// TODO this is instantaneous. Need to break it down to 1080 degrees /s 
-		// TODO Just set it in motion and let it do it's own thing just like a ball. 
-		// this will need to be done by board. 
-		// 1080 /90 --> 0.08333 s of rotation. Frame rate is 0.005 s
-		// 1080 * 0.005 = 5.4 degrees per animation
-		this.rotate(new Angle(Math.PI / 180 * this.angularVelocity * 0.005));//TODO Add frame rate
-		// TODO Use a while loop either in board or here (in a separate thread) to keep rotating
-		// Flippers will need their own thread for rotation. As long as the type is threadsafe animation 
-		// which has its own thread will be able to graph the correct values. 
-		// Flipper will also need a thread to listen for key events This may work better on board. 
+		new Thread(() ->  {
+			if (!this.rotating) {
+				this.rotating = true;
+				while (this.rotating) {
+					this.rotate(new Angle(Math.PI / 180 * this.angularVelocity * 0.005));
+					try {
+						Thread.sleep(5L);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
+			
+		}).start();
 	}
 	
 	/**
@@ -314,9 +322,13 @@ public class LeftFlipper implements Gadget {
 	private void rotate(Angle angle) {
 			// Rotate counterclockwise
 			this.tail = Physics.rotateAround(this.tail, this.pivot.getCenter(), angle);
-			//TODO rotate walls. 
 			this.port = port.rotateAround(this.pivot.getCenter(), angle);
 			this.starboard = starboard.rotateAround(this.pivot.getCenter(), angle);
+			this.degreesRotated = this.degreesRotated.plus(angle);
+			if(this.degreesRotated.equals(Angle.RAD_PI_OVER_TWO)) {
+				this.rotating = false;
+				this.degreesRotated = Angle.ZERO;
+			}
 	}
 
 	@Override
@@ -339,11 +351,11 @@ public class LeftFlipper implements Gadget {
         		(int) (RADIUS * 2 * L), (int) (RADIUS * 2 * L), 0, 360);
         graphics.fillArc((int) ((this.tail.getCenter().x() - RADIUS) * L), (int) ((-this.tail.getCenter().y() - RADIUS) * L), 
         		(int) (RADIUS * 2 * L), (int) (RADIUS * 2 * L), 0, 360);
-        System.out.println(-this.tail.getCenter().y());
-        System.out.println(this.port);
-        System.out.println(this.starboard);
-        System.out.println(this.tail);
-        System.out.println(this.pivot);
+//        TODO:System.out.println(-this.tail.getCenter().y());
+//        System.out.println(this.port);
+//        System.out.println(this.starboard);
+//        System.out.println(this.tail);
+//        System.out.println(this.pivot);
         final int[] xPoints = {(int) (this.port.start().x() * L), (int) (this.port.end().x() * L),(int) (this.starboard.end().x() * L), (int) (this.starboard.start().x() * L) };
         final int[] yPoints = {(int) (-this.port.start().y() * L), (int) (-this.port.end().y() * L),(int) (-this.starboard.end().y() * L), (int) (-this.starboard.start().y() * L) };
         graphics.fillPolygon(xPoints, yPoints, 4);
