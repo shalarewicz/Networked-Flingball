@@ -1,14 +1,23 @@
 package flingball;
 
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import javax.swing.JFrame;
+
 import flingball.gadgets.Gadget;
+import flingball.gadgets.Portal;
 import physics.Vect;
 
 public class Board {
@@ -135,8 +144,13 @@ public class Board {
 			assert gadgets.contains(gadget) : "Board trigger not in gadgets: " + gadget + " triggers " + boardTriggers.get(gadget);
 		}
 		
-		for (KeyEvent key : keyTriggers.keySet()) {
-			for (Gadget actionGadget : keyTriggers.get(key)) {
+		for (String key : keyUpTriggers.keySet()) {
+			for (Gadget actionGadget : keyUpTriggers.get(key)) {
+				assert gadgets.contains(actionGadget) : "Key Triggered gadget not in gadgets" + actionGadget;
+			}
+		}
+		for (String key : keyDownTriggers.keySet()) {
+			for (Gadget actionGadget : keyDownTriggers.get(key)) {
 				assert gadgets.contains(actionGadget) : "Key Triggered gadget not in gadgets" + actionGadget;
 			}
 		}
@@ -183,6 +197,7 @@ public class Board {
 
 	private List<Gadget> gadgets = new ArrayList<Gadget>();
 	private List<Ball> balls = new ArrayList<Ball>();
+	private Map<Portal, List<String>> portals = new HashMap<Portal, List<String>>();
 	
 	private ConcurrentMap<Board, Wall> neighbors = new ConcurrentHashMap<Board, Wall>();
 	
@@ -190,9 +205,32 @@ public class Board {
 	private ConcurrentMap<Gadget, List<Action>> boardTriggers = new ConcurrentHashMap<Gadget, List<Action>>();
 	
 	// TODO KeyName vs KeyEvent
-	private ConcurrentMap<KeyEvent, List<Gadget>> keyTriggers = new ConcurrentHashMap<KeyEvent, List<Gadget>>();
+	private ConcurrentMap<String, List<Gadget>> keyUpTriggers = new ConcurrentHashMap<String, List<Gadget>>();
+	private ConcurrentMap<String, List<Gadget>> keyDownTriggers = new ConcurrentHashMap<String, List<Gadget>>();
 	//TODO Support board actions for keys? This could allow the player to spam the board
-	private ConcurrentMap<KeyEvent, List<Action>> keyBoardTriggers = new ConcurrentHashMap<KeyEvent, List<Action>>();
+	private ConcurrentMap<String, List<Action>> keyUpBoardTriggers = new ConcurrentHashMap<String, List<Action>>();
+	private ConcurrentMap<String, List<Action>> keyDownBoardTriggers = new ConcurrentHashMap<String, List<Action>>();
+	
+	//Listeners
+	private final KeyListener keyListener = new KeyAdapter() {
+		@Override public void keyReleased(KeyEvent e) {
+			System.out.println("released key");
+			KeyNames.keyName.get(e.getKeyCode());
+			for (String key : keyUpTriggers.keySet()) {
+				for (Gadget g : keyUpTriggers.get(key)) {
+					g.takeAction();
+				}
+			}
+		}
+		@Override public void keyPressed(KeyEvent e) {
+			KeyNames.keyName.get(e.getKeyCode());
+			for (String key : keyDownTriggers.keySet()) {
+				for (Gadget g : keyDownTriggers.get(key)) {
+					g.takeAction();
+				}
+			}
+		}
+	};
 	
 	/**
 	 * Locations for a neighboring board or a border wall
@@ -237,6 +275,7 @@ public class Board {
 		//TODO
 	}
 	
+	
 	/**
 	 * Adds a ball to the flingball board using the ball's position and velocity. If the ball has a position 
 	 * not on the board, it is not added. If the ball has a velocity >= 200 L / s, the velocity is set to 200. 
@@ -247,13 +286,24 @@ public class Board {
 	}
 	
 	/**
-	 * Adds a trigger and it's associated action to the board. If the trigger is not the name of a 
+	 * Adds a trigger and it's associated Action to the board. If the trigger is not the name of a 
 	 * Gadget currently on the board, no action is added. 
 	 * 
 	 * @param trigger name of Gadget which serves as the trigger for the action
 	 * @param action action to be taken when the trigger is triggered. 
 	 */
 	public void addAction(String trigger, Action action) {
+		//TODO
+	}
+	
+	/**
+	 * Adds a trigger and it's associated action to the board. If the trigger is not the name of a 
+	 * Gadget currently on the board, no action is added. 
+	 * 
+	 * @param trigger name of Gadget which serves as the trigger for the action
+	 * @param action name of the Gadget whose action will be triggered 
+	 */
+	public void addAction(String trigger, String action) {
 		//TODO
 	}
 	
@@ -297,6 +347,118 @@ public class Board {
 	private void takeAction(Action action) {
 		//TODO
 	}
+	
+	/**
+	 * Adds a portal to the flingball board using the gadgets position. If the Gadget has a position
+	 * not on the board, it is not added. 
+	 * @param portal
+	 * @param name
+	 * @param board
+	 */
+	void addPortal(Portal portal, String name, String board) {
+		portals.put(portal, Arrays.asList(name, board));
+		//TODO Should this also add items to  gadgets?
+	}
+	
+	/**
+	 * Connects all portals on the board
+	 */
+	void connectPortals() {
+		for (Portal portal : portals.keySet()) {
+			try {
+				Board otherBoard = this.getBoard(portals.get(portal).get(1));
+				Portal target = otherBoard.getPortal(portals.get(portal).get(0));
+				portal.connect(target);
+			} catch (NoSuchElementException e) {
+				// Do nothing
+			}	
+		}
+	}
+	
+	/**
+	 * 
+	 * @param name name of the gadget to be found
+	 * @return Gadget with name name
+	 * @throws RuntimeException if the Gadget is nor found. 
+	 */
+	private Gadget getGadget(String name) {
+		for (Gadget g : gadgets) {
+			if (name.equals(g.name())) {
+				return g;
+			}
+		}
+		throw new NoSuchElementException(name + "gadget not found");
+	}
+	
+	/**
+	 * 
+	 * @param name name of the gadget to be found
+	 * @return Gadget with name name
+	 * @throws RuntimeException if the Gadget is nor found. 
+	 */
+	private Portal getPortal(String name) {
+		for (Portal p : portals.keySet()) {
+			if (name.equals(p.name())) {
+				return p;
+			}
+		}
+		throw new NoSuchElementException(name + "portal not found");
+	}
+	
+	private Board getBoard(String name) {
+		for (Board b : neighbors.keySet()) {
+			if (name.equals(b.NAME)) {
+				return b;
+			}
+		}
+		throw new NoSuchElementException(name + "board not found");
+	}
+	
+	/**
+	 * Add an action associated with a key press or release
+	 * @param key - key that is pressed or released
+	 * @param action - either a board action from Action or the name of a Gadget who's action should be taken
+	 * @param up - true if the action should be taken when the key is released. false if it should be taken when the key is pressed
+	 */
+	void addKeyAction(String keyname, String action, boolean up) {
+		if (up) {
+			//TODO read action and add to keyUpTriggers
+		} else {
+			//TODO read action and add to keyDownTriggers
+		}
+	}
+	
+	void onKeyUp(String key) {
+		for (String k : keyUpTriggers.keySet()) {
+			for (Gadget g : keyUpTriggers.get(key)) {
+				g.takeAction();
+			}
+		}
+		for (String k : keyUpBoardTriggers.keySet()) {
+			for (Action a : keyUpBoardTriggers.get(key)) {
+				this.takeAction(a);
+			}
+		}
+	}
+	
+	void onKeyDown(String key) {
+		for (String k : keyDownTriggers.keySet()) {
+			for (Gadget g : keyDownTriggers.get(key)) {
+				g.takeAction();
+			}
+		}
+		for (String k : keyDownBoardTriggers.keySet()) {
+			for (Action a : keyDownBoardTriggers.get(key)) {
+				this.takeAction(a);
+			}
+		}
+	}
+	
+	
+	
+	
+	
+	
 	
 	
 	
