@@ -29,7 +29,7 @@ public class Portal implements Gadget {
 	private final int x, y;
 	private final String name;
 	private final Circle portal;
-	private final Gadget target;
+	private Portal target;
 	
 	private static final double RADIUS = 0.5;
 	private static final int HEIGHT = 1;
@@ -53,7 +53,13 @@ public class Portal implements Gadget {
 		assert this.target instanceof Portal : name + ": Portal is not connected to an object of type Portal";
 	}
 	
-	
+	/**
+	 *TODO
+	 * Creates a self-connected portal with anchor (x,y)
+	 * @param name
+	 * @param x
+	 * @param y
+	 */
 	public Portal(String name, int x, int y) {
 		this.x = x;
 		this.y = -y;
@@ -62,6 +68,7 @@ public class Portal implements Gadget {
 		this.portal = new Circle(x, y, RADIUS);
 		this.checkRep();
 	}
+	
 	
 	
 	@Override
@@ -141,4 +148,11 @@ public class Portal implements Gadget {
 		coverage[y][x] = 1;
 	}
 
+	/**
+	 * Connects this portal to another portal. 
+	 * @param p
+	 */
+	public void connect(Portal p) {
+		this.target = p;
+	}
 }

@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 
 import flingball.Ball;
 import flingball.Orientation;
+import physics.Angle;
 import physics.Circle;
 import physics.Vect;
 
@@ -35,10 +36,16 @@ public class RightFlipper implements Gadget {
 	private final String name;
 	private final String trigger = NO_TRIGGER; //TODO Why is this final?
 	private double reflectionCoeff = DEFAULT_FLIPPER_REFLECTION_COEFF;
-	private final Circle pivot, tail;
-	private final Wall port, starboard;
+	private  Circle pivot, tail;
+	private  Wall port, starboard;
 	private final int angularVelocity = 1080;
-	private final Orientation orientation = Orientation.ZERO;
+	private Orientation orientation = Orientation.ZERO;
+	private boolean rotating = true;
+	private Angle degreesRotated = Angle.ZERO;
+	
+	private final static double RADIUS = 0.25;
+	private final static int HEIGHT = 2;
+	private final static int WIDTH = 2;
 	
 	/*
 	 * AF(name, x, y, pivot, tail, port starboard) ::= A flipper called name with anchor (x,-y) and an 
@@ -109,6 +116,52 @@ public class RightFlipper implements Gadget {
 		
 		// Check distance between the centers of pivot and tail must be equal to the length of port/starboard
 		assert portPivot.distanceSquared(portTail) == pivotCenter.distanceSquared(tailCenter);
+		
+	}
+	
+	
+	public RightFlipper(String name, int x, int y, Orientation o) {
+		this.name = name;
+		this.x = x;
+		this.y = -y;
+		this.orientation = o;
+		
+		switch (o) {
+		case ZERO: {
+			this.tail = new Circle(x + WIDTH - RADIUS, -y - HEIGHT + RADIUS, RADIUS);
+			this.pivot = new Circle(x + WIDTH - RADIUS, -y - RADIUS, RADIUS);
+			this.starboard = new Wall(name + ": port", x + WIDTH, -y - RADIUS, x + WIDTH, -y - HEIGHT + RADIUS);
+			this.port = new Wall(name + ": starboard", x + WIDTH - 2*RADIUS, -y - RADIUS, x + WIDTH - 2*RADIUS, -y -2 + RADIUS);
+			
+			break;
+		}
+		case NINETY: {
+			this.tail = new Circle(x + RADIUS, -y - HEIGHT + RADIUS, RADIUS);
+			this.pivot = new Circle(x + WIDTH - RADIUS, -y - HEIGHT + RADIUS, RADIUS);
+			this.starboard = new Wall(name + ": port", x + RADIUS, -y - HEIGHT, x + WIDTH - RADIUS, -y - HEIGHT);
+			this.port = new Wall(name + ": starboard", x + RADIUS, -y - HEIGHT + 2*RADIUS, x + WIDTH - RADIUS, -y - HEIGHT + 2*RADIUS);
+			
+			break;
+		}
+		case ONE_EIGHTY: {
+			this.tail = new Circle(x + RADIUS, -y - RADIUS, RADIUS);
+			this.pivot = new Circle(x + RADIUS, -y - HEIGHT + RADIUS, RADIUS);
+			this.starboard = new Wall(name + ":port", (double) x, -y -RADIUS, (double) x, -y - HEIGHT + RADIUS);
+			this.port = new Wall(name + ":starboard", x + 2*RADIUS, -y -RADIUS, x + 2 * RADIUS, -y - HEIGHT + RADIUS);
+			break;
+		}
+		case TWO_SEVENTY: {
+			this.tail = new Circle(x + WIDTH - RADIUS, -y - RADIUS, RADIUS);
+			this.pivot = new Circle(x + RADIUS, -y - RADIUS, RADIUS);
+			this.starboard = new Wall(name + ": port", x + RADIUS, -y - 2*RADIUS, x + WIDTH - RADIUS, -y - 2*RADIUS);
+			this.port = new Wall(name + ": starboard", x + RADIUS, (double) -y, x + WIDTH - RADIUS, (double) -y);
+			break;
+		}
+		default: {
+			
+			throw new RuntimeException("Should never get here. Invalid LeftFlipper Orientation");
+		}
+		}
 		
 	}
 	
