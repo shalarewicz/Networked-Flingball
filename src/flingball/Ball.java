@@ -460,14 +460,25 @@ public class Ball {
 	}
 	
 	/**
-	 * Sets the position of the ball
+	 * Sets the position of the ball's center on a flingball board
 	 * 
 	 * @param vect new position of the ball. 
 	 */
-	public void setPosition(Vect vect) {
+	public void setBoardPosition(Vect vect) {
 		this.boardCenter = vect;
 		this.cartesianCenter = getCartesianCenterFromBoardCenter(this.boardCenter);
 		this.anchor = getAnchorFromBoardCenter(this.boardCenter);
+	}
+	
+	/**
+	 * Sets the position of the ball's center in Cartesian space
+	 * 
+	 * @param vect new position of the ball. 
+	 */
+	public void setCartesianPosition(Vect vect) {
+		this.cartesianCenter = vect;
+		this.boardCenter = getBoardCenterFromCartesianCenter(this.cartesianCenter);
+		this.anchor = this.getAnchorFromCartesianCenter(this.cartesianCenter);
 	}
 	
 }

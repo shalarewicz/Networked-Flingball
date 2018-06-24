@@ -1,5 +1,7 @@
 package flingball.gadgets;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
 import flingball.Ball;
@@ -16,6 +18,12 @@ public class Portal implements Gadget {
 	 * on a connected board. The ball will exit the target portal with the same velocity 
 	 * that it entered the source portal. If no target portal exists then the ball passes over
 	 * the portal unaffected. 
+	 * 
+	 * In order to teleport through a portal the ball must completely leave the portal and then 
+	 * collide with the portal again. Therefore, if a portal is immediately adjacent to a bumper 
+	 * and the ball collides with the bumper back towards portal the ball will not teleport again.
+	 * However, if there is an empty space between the portal and bumper then the ball will teleport
+	 * again. 
 	 * 
 	 * Portals do not have to be symmetrically connected. That is Portal A can be connected to
 	 * Portal B, but Portal B can be connected to Portal C. 
@@ -34,6 +42,8 @@ public class Portal implements Gadget {
 	private static final double RADIUS = 0.5;
 	private static final int HEIGHT = 1;
 	private static final int WIDTH = 1;
+	
+	private final static Portal UNCONNECTED = new Portal("UNCONNECTED", -1, -1);
 	
 	/*
 	 * AF(x, y, name, portal, target) ::= 
@@ -54,18 +64,17 @@ public class Portal implements Gadget {
 	}
 	
 	/**
-	 *TODO
-	 * Creates a self-connected portal with anchor (x,y)
-	 * @param name
-	 * @param x
-	 * @param y
+	 * Creates a an unconnected portal (x,y)
+	 * @param name name of the  portal
+	 * @param x x coordinate of upper left corner of the bounding box of the portal
+	 * @param y y coordinate of upper left corner of the bounding box of the portal
 	 */
 	public Portal(String name, int x, int y) {
 		this.x = x;
 		this.y = -y;
 		this.name = name;
-		this.target = this;
-		this.portal = new Circle(x, y, RADIUS);
+		this.portal = new Circle(x, -y, RADIUS);
+		this.target = UNCONNECTED;
 		this.checkRep();
 	}
 	
@@ -94,24 +103,35 @@ public class Portal implements Gadget {
 	@Override
 	public double getReflectionCoefficient() {
 		// TODO Not used
-		return 0;
+		throw new UnsupportedOperationException("Portal does not have a reflection coefficient");
 	}
 
 	@Override
 	public void setReflectionCoefficient(double x) {
 		// TODO Auto-generated method stub
-		// Do nothing
-
+		throw new UnsupportedOperationException("Portal does not have a reflection coefficient");
 	}
 
 	@Override
 	public double collisionTime(Ball ball) {
-		return ball.timeUntilCircleCollision(portal);
+		final double collisionTime;
+		
+		// This prevents collisions were a ball is currently being teleported and currently overlaps with a portal. 
+		if (ball.getCartesianCenter().distanceSquared(this.portal.getCenter()) > (RADIUS + ball.getRadius())) {
+			collisionTime = ball.timeUntilCircleCollision(portal);
+		} else {
+			collisionTime = Double.POSITIVE_INFINITY;
+		}
+		return collisionTime;
 	}
 
 	@Override
 	public void reflectBall(Ball ball) {
+		if (!this.target.equals(UNCONNECTED)) {
+			ball.setCartesianPosition((this.target.portal.getCenter()));
+		}
 		// TODO Auto-generated method stub
+		
 
 	}
 
@@ -128,14 +148,25 @@ public class Portal implements Gadget {
 
 	@Override
 	public boolean ballOverlap(Ball ball) {
+		if (this.target.equals(UNCONNECTED)) {
+			return false;
+		}
 		double distance = Math.sqrt(Physics.distanceSquared(ball.getBoardCenter(), this.portal.getCenter()));
 		return distance < ball.getRadius() + RADIUS;
 	}
 
 	@Override
 	public BufferedImage generate(int L) {
-		// TODO Auto-generated method stub
-		return null;
+		final int diameter = (int) (2 * RADIUS * L);
+		BufferedImage output = new BufferedImage(diameter, diameter, BufferedImage.TYPE_4BYTE_ABGR);
+        Graphics2D graphics = (Graphics2D) output.getGraphics();
+        
+        graphics.setColor(Color.BLUE);
+        graphics.fillArc(0, 0, diameter, diameter, 0, 360);
+        graphics.setColor(Color.LIGHT_GRAY);
+        graphics.fillArc(0, 0, diameter / 2, diameter / 2, 0, 360);
+        
+		return output;
 	}
 
 	@Override
@@ -154,5 +185,23 @@ public class Portal implements Gadget {
 	 */
 	public void connect(Portal p) {
 		this.target = p;
+	}
+	
+	@Override
+	public String toString() {
+		//TODO include target board?
+		return "{PORTAL: name " + this.position() + this.target + "}";
+	}
+	
+	@Override
+	public boolean equals(Object that) {
+		return that instanceof Portal && this.sameParts((Portal) that);
+	}
+
+	private boolean sameParts(Portal that) {
+		return this.name.equals(that.name) &&
+				this.x == that.x &&
+				this.y == that.y &&
+				this.target == that.target;
 	}
 }
