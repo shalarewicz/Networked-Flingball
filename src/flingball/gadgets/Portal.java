@@ -10,8 +10,6 @@ import physics.Physics;
 import physics.Vect;
 
 public class Portal implements Gadget {
-	// TODO: Might be worth creating a separate interface for portals. This would allow for a shuffling
-	// of portal connections, changing or setting target portals. 
 	/**
 	 * A gadget which can be used on a flingball board. A portal is a circular hole with diameter
 	 * 1 L. A portal can teleport an object to another target portal located on the same board or 
@@ -78,8 +76,6 @@ public class Portal implements Gadget {
 		this.checkRep();
 	}
 	
-	
-	
 	@Override
 	public Vect position() {
 		return new Vect(this.x, -this.y);
@@ -101,26 +97,12 @@ public class Portal implements Gadget {
 	}
 
 	@Override
-	public double getReflectionCoefficient() {
-		// TODO Not used
-		throw new UnsupportedOperationException("Portal does not have a reflection coefficient");
-	}
-
-	@Override
-	public void setReflectionCoefficient(double x) {
-		// TODO Auto-generated method stub
-		throw new UnsupportedOperationException("Portal does not have a reflection coefficient");
-	}
-
-	@Override
 	public double collisionTime(Ball ball) {
-		final double collisionTime;
+		double collisionTime = Double.POSITIVE_INFINITY;
 		
 		// This prevents collisions were a ball is currently being teleported and currently overlaps with a portal. 
 		if (ball.getCartesianCenter().distanceSquared(this.portal.getCenter()) > (RADIUS + ball.getRadius())) {
 			collisionTime = ball.timeUntilCircleCollision(portal);
-		} else {
-			collisionTime = Double.POSITIVE_INFINITY;
 		}
 		return collisionTime;
 	}
@@ -130,9 +112,6 @@ public class Portal implements Gadget {
 		if (!this.target.equals(UNCONNECTED)) {
 			ball.setCartesianPosition((this.target.portal.getCenter()));
 		}
-		// TODO Auto-generated method stub
-		
-
 	}
 
 	@Override
@@ -180,11 +159,13 @@ public class Portal implements Gadget {
 	}
 
 	/**
-	 * Connects this portal to another portal. 
-	 * @param p
+	 * Establishes a one way connection between this portal that. A ball that 
+	 * collides with this portal will be teleported to that and exit with the 
+	 * same velocity and direction. 
+	 * @param that
 	 */
-	public void connect(Portal p) {
-		this.target = p;
+	public void connect(Portal that) {
+		this.target = that;
 	}
 	
 	@Override

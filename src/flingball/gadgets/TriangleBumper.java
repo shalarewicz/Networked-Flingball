@@ -23,7 +23,7 @@ import flingball.Ball;
 import flingball.Orientation;
 import physics.Vect;
 
-public class TriangleBumper implements Gadget {
+public class TriangleBumper implements Bumper {
 	
 	/**
 	 * TriangleBumper represents a triangle bumper which can be played

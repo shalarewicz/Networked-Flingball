@@ -18,7 +18,7 @@ import java.util.Set;
 import flingball.Ball;
 import physics.Vect;
 
-public class SquareBumper implements Gadget {
+public class SquareBumper implements Bumper {
 	
 	/**
 	 * SquareBumper represents a square bumper which can be played

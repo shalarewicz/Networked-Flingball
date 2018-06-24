@@ -120,17 +120,6 @@ public class Wall implements Gadget {
 	public int width() {
 		return (int) Math.sqrt(Physics.distanceSquared(x1, y1, x2, y2));
 	}
-	
-	
-	@Override
-	public double getReflectionCoefficient() {
-		return this.reflectionCoeff;
-	}
-	
-	@Override
-	public void setReflectionCoefficient(double x) {
-		// Do Nothing
-	}
 
 	@Override
 	public double collisionTime(Ball ball) {

@@ -13,7 +13,7 @@ import physics.Circle;
 import physics.Physics;
 import physics.Vect;
 
-public class CircleBumper implements Gadget {
+public class CircleBumper implements Bumper {
 	
 	
 	/**
@@ -91,16 +91,15 @@ public class CircleBumper implements Gadget {
 		return this.WIDTH;
 	}
 	
-	@Override
+	@Override 
 	public double getReflectionCoefficient() {
 		return this.reflectionCoeff;
 	}
 	
-	@Override
+	@Override 
 	public void setReflectionCoefficient(double x) {
 		this.reflectionCoeff = x;
 	}
-	
 
 	@Override
 	public double collisionTime(Ball ball) {

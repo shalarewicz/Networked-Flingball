@@ -170,7 +170,7 @@ public class BoardParser {
             				int y = Integer.parseInt(greatGrandChildren.get(2).text());
             				int width = Integer.parseInt(greatGrandChildren.get(3).text());
             				int height = Integer.parseInt(greatGrandChildren.get(4).text());
-            				board.addGadget(new AbsorberC(name, x, y, width, height));
+            				board.addGadget(new Absorber(name, x, y, width, height));
             				continue;
             			}
             			case FLIPPER: //FLIPPER ::= LEFTFLIPPER | RIGHTFLIPPER;

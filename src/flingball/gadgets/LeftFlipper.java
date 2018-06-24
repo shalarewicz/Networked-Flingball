@@ -19,7 +19,7 @@ import physics.Circle;
 import physics.Physics;
 import physics.Vect;
 
-public class LeftFlipper implements Gadget {
+public class LeftFlipper implements Bumper {
 	/**
 	 * A gadget which can be used on a flingball board. A left flipper has size 1 L x 2 L. 
 	 * a Left Flippers action rotates the flipper about it's pivot point which is in the 

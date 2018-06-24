@@ -42,19 +42,6 @@ public interface Gadget {
 	public int width();
 	
 	/**
-	 * 
-	 * @return The coefficient of reflection of the gadget
-	 */
-	public double getReflectionCoefficient();
-	
-	/**
-	 * Sets the reflectionCoefficient for a gadget. The default value is 1.0 for all
-	 * gadgets except flippers where the default is 0.95.
-	 * @param sets the reflection coefficient of a gadget. 
-	 */
-	public void setReflectionCoefficient(double x);
-	
-	/**
 	 * Calculates the time until a ball collides with the object.
 	 * 
 	 * @param ball A ball in the same 2D space. 
@@ -69,7 +56,6 @@ public interface Gadget {
 	 * @param ball ball which will collide with the gadget. 
 	 */
 	public void reflectBall(Ball ball);
-	
 	
 	/**
 	 * 
