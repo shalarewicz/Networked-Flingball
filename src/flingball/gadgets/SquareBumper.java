@@ -75,7 +75,7 @@ public class SquareBumper implements Bumper {
 				endPoints.put(end, 1);
 			}
 		}
-		assert endPoints.size() == 3;
+		assert endPoints.size() == 4;
 		for (Vect v : endPoints.keySet()) {
 			// In a square each vertex must be an end point of exactly two sides. Because walls
 			// is a set there can be no duplicate entries so therefore if each vertex occurs twice
