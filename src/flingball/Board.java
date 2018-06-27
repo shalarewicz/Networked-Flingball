@@ -16,8 +16,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import javax.swing.JFrame;
 
-import flingball.gadgets.Gadget;
-import flingball.gadgets.Portal;
+import flingball.gadgets.*;
 import physics.Vect;
 
 public class Board {
@@ -117,7 +116,7 @@ public class Board {
 			
 			assert names.add(gadget.name()) : "Duplicate name - gadget: " + gadget;
 			
-			//TODO Check for ball overlaps
+			//TODO Check for ball overlaps in bumpers allow portals and absorbers
 		}
 		
 		for (Ball ball : balls) {
@@ -162,16 +161,16 @@ public class Board {
 			case TOP:
 				// If this board is connected to the neighboring board at the top then the neighboring board
 				// must be connected to this board at the bottom
-				assert neighbor.neighbors.get(this).equals(Wall.BOTTOM);
+				assert neighbor.neighbors.get(this).equals(Neighbor.BOTTOM);
 				break;
 			case BOTTOM:
-				assert neighbor.neighbors.get(this).equals(Wall.TOP);
+				assert neighbor.neighbors.get(this).equals(Neighbor.TOP);
 				break;
 			case LEFT:
-				assert neighbor.neighbors.get(this).equals(Wall.RIGHT);
+				assert neighbor.neighbors.get(this).equals(Neighbor.RIGHT);
 				break;
 			case RIGHT:
-				assert neighbor.neighbors.get(this).equals(Wall.LEFT);
+				assert neighbor.neighbors.get(this).equals(Neighbor.LEFT);
 				break;
 			default:
 				break;
@@ -186,68 +185,62 @@ public class Board {
 	public static final double DEFAULT_FRICTION_2 = 0.025;
 	
 	// Board Params
-	private final String NAME;
-	private final int HEIGHT = 20;
-	private final int WIDTH = 20;
+	public final String NAME;
+	public final int HEIGHT = 20;
+	public final int WIDTH = 20;
+	private final Wall TOP = new Wall("TOP", 0, 0, WIDTH, 0);
+	private final Wall BOTTOM = new Wall("BOTTOM", 0, -HEIGHT, WIDTH, -HEIGHT);
+	private final Wall LEFT = new Wall("LEFT", 0, 0, 0, -HEIGHT);
+	private final Wall RIGHT = new Wall("RIGHT", WIDTH, 0, WIDTH, -HEIGHT);
+	private final int[][] gadgetCoverage = new int[WIDTH + 1][HEIGHT + 1];
+	
+	/**
+	 * A board is 20 L x 20 L wide. where L is the number of pixels. 
+	 */
+	static final int L = 40;
 	
 	// Default Constants
 	private double gravity = DEFAULT_GRAVITY;
 	private double friction1 = DEFAULT_FRICTION_1;
 	private double friction2 = DEFAULT_FRICTION_2;
 
+	// Objects on board
 	private List<Gadget> gadgets = new ArrayList<Gadget>();
 	private List<Ball> balls = new ArrayList<Ball>();
 	private Map<Portal, List<String>> portals = new HashMap<Portal, List<String>>();
+	private Set<Absorber> absorbers = new HashSet<Absorber>();
+	private final Set<Wall> walls = new HashSet<Wall>(Arrays.asList(TOP, BOTTOM, LEFT, RIGHT));
 	
-	private ConcurrentMap<Board, Wall> neighbors = new ConcurrentHashMap<Board, Wall>();
+	private ConcurrentMap<Board, Neighbor> neighbors = new ConcurrentHashMap<Board, Neighbor>();
 	
 	private ConcurrentMap<Gadget, List<Gadget>> triggers = new ConcurrentHashMap<Gadget, List<Gadget>>();
 	private ConcurrentMap<Gadget, List<Action>> boardTriggers = new ConcurrentHashMap<Gadget, List<Action>>();
 	
-	// TODO KeyName vs KeyEvent
 	private ConcurrentMap<String, List<Gadget>> keyUpTriggers = new ConcurrentHashMap<String, List<Gadget>>();
 	private ConcurrentMap<String, List<Gadget>> keyDownTriggers = new ConcurrentHashMap<String, List<Gadget>>();
 	//TODO Support board actions for keys? This could allow the player to spam the board
 	private ConcurrentMap<String, List<Action>> keyUpBoardTriggers = new ConcurrentHashMap<String, List<Action>>();
 	private ConcurrentMap<String, List<Action>> keyDownBoardTriggers = new ConcurrentHashMap<String, List<Action>>();
 	
-	//Listeners
-	private final KeyListener keyListener = new KeyAdapter() {
+	// Listeners
+	public final KeyAdapter keyListener = new KeyAdapter() {
 		@Override public void keyReleased(KeyEvent e) {
-			System.out.println("released key");
-			KeyNames.keyName.get(e.getKeyCode());
-			for (String key : keyUpTriggers.keySet()) {
-				for (Gadget g : keyUpTriggers.get(key)) {
-					g.takeAction();
-				}
-			}
+			onKey(KeyNames.keyName.get(e.getKeyCode()), keyUpTriggers, keyUpBoardTriggers);
 		}
 		@Override public void keyPressed(KeyEvent e) {
-			KeyNames.keyName.get(e.getKeyCode());
-			for (String key : keyDownTriggers.keySet()) {
-				for (Gadget g : keyDownTriggers.get(key)) {
-					g.takeAction();
-				}
-			}
+			onKey(KeyNames.keyName.get(e.getKeyCode()), keyDownTriggers, keyDownBoardTriggers);
 		}
 	};
-	
+
 	/**
 	 * Locations for a neighboring board or a border wall
 	 */
-	private enum Wall {
+	private enum Neighbor {
 		TOP, BOTTOM, LEFT, RIGHT
 	}
 	
-	/**
-	 * List of actions which can be performed on the board.
-	 */
-//	public enum Action {
-//		FIRE_ALL, ADD_BALL, ADD_SQUARE, ADD_CIRCLE, ADD_TRIANGLE, ADD_ABSORBER, REVERSE_BALLS
-//		//TODO REMOVE_BALL, REMOVE_BUMPER, REMOVE_ABSORBER, SPLIT
-//	}
 	
-	//TODO FActory methods
+	//TODO Factory methods why???
 
 	/**
 	 * Constructs a blank board with the provided name and constants
@@ -272,7 +265,10 @@ public class Board {
 	 * @param gadget gadget to be added
 	 */
 	public void addGadget(Gadget gadget) {
-		//TODO
+		//TODO Make Gadgets a set and assert addition to the set?
+		this.gadgets.add(gadget);
+		this.setCoverage(gadget);
+		checkRep();	
 	}
 	
 	
@@ -282,7 +278,9 @@ public class Board {
 	 * @param ball ball to be added. 
 	 */
 	public void addBall(Ball ball) {
-		//TODO
+		//TODO Start a new thread for each ball. this is done in play but what about balls added at a later point. 
+		balls.add(ball);
+		checkRep();
 	}
 	
 	/**
@@ -292,8 +290,12 @@ public class Board {
 	 * @param trigger name of Gadget which serves as the trigger for the action
 	 * @param action action to be taken when the trigger is triggered. 
 	 */
-	public void addAction(String trigger, Action action) {
-		//TODO
+	private void addAction(String trigger, Action action) {
+		Gadget gTrigger = getGadget(trigger);
+		if (!triggers.containsKey(gTrigger)) {
+			triggers.put(gTrigger, new ArrayList<Gadget>());
+		}
+		boardTriggers.get(gTrigger).add(action);
 	}
 	
 	/**
@@ -303,13 +305,168 @@ public class Board {
 	 * @param trigger name of Gadget which serves as the trigger for the action
 	 * @param action name of the Gadget whose action will be triggered 
 	 */
-	public void addAction(String trigger, String action) {
-		//TODO
+	private void addAction(String trigger, String action) {
+		Gadget gTrigger = getGadget(trigger);
+		if (!triggers.containsKey(gTrigger)) {
+			triggers.put(gTrigger, new ArrayList<Gadget>());
+		}
+		triggers.get(gTrigger).add(getGadget(action));
+	}
+	
+	/**
+	 * Add an action associated with a key press or release
+	 * @param key - key that is pressed or released
+	 * @param action - name of a Gadget who's action is taken
+	 * @param up - true if the action should be taken when the key is released. false if it should be taken when the key is pressed
+	 */
+	private void addKeyAction(String keyName, String action, boolean up) {
+		
+		if (up) {
+			if (!keyUpTriggers.containsKey(keyName)) {
+				keyUpTriggers.put(keyName, new ArrayList<Gadget>());
+			}
+			keyUpTriggers.get(keyName).add(getGadget(action));
+		} else {
+			if (!keyDownTriggers.containsKey(keyName)) {
+				keyDownTriggers.put(keyName, new ArrayList<Gadget>());
+			}
+			keyDownTriggers.get(keyName).add(getGadget(action));
+		}
+	}
+	
+	/**
+	 * Add an action associated with a key press or release
+	 * @param key - key that is pressed or released
+	 * @param action - name of a Gadget who's action is taken
+	 * @param up - true if the action should be taken when the key is released. false if it should be taken when the key is pressed
+	 */
+	private void addKeyAction(String keyName, Action action, boolean up) {
+		
+		if (up) {
+			if (!keyUpBoardTriggers.containsKey(keyName)) {
+				keyUpBoardTriggers.put(keyName, new ArrayList<Action>());
+			}
+			keyUpBoardTriggers.get(keyName).add(action);
+		} else {
+			if (!keyDownBoardTriggers.containsKey(keyName)) {
+				keyDownBoardTriggers.put(keyName, new ArrayList<Action>());
+			}
+			keyDownBoardTriggers.get(keyName).add(action);
+		}
+	}
+	
+	public enum ActionType{
+		BOARD, GADGET, KEYUP, KEYDOWN, KEYBOARDUP, KEYBOARDDOWN
+	}
+	
+	/**
+	 * If the provided string is a member of Action then the appropriate Action type is returned. 
+	 * If not, then Action.NONE is returned. 
+	 * @param action
+	 * @return
+	 */
+	public static Action readAction(String action) {
+		Action actionToTake;
+		switch (action) {	
+		case"FIRE_ALL": {
+			actionToTake = Action.FIRE_ALL;
+			break;
+		}
+		case"ADD_BALL": {
+			actionToTake = Action.ADD_BALL;
+			break;
+		}
+		case"ADD_SQUARE": {
+			actionToTake = Action.ADD_SQUARE;
+			break;
+		}
+		case"ADD_CIRCLE": {
+			actionToTake = Action.ADD_CIRCLE;
+			break;
+		}
+		case"ADD_TRIANGLE": {
+			actionToTake = Action.ADD_TRIANGLE;
+			break;
+		}
+		case"ADD_ABSORBER": {
+			actionToTake = Action.ADD_ABSORBER;
+			break;
+		}
+		case"REVERSE_BALLS": {
+			actionToTake = Action.REVERSE_BALLS;
+			break;
+		}
+		case"REMOVE_BALL": {
+			actionToTake = Action.REMOVE_BALL;
+			break;
+		}
+		case"REMOVE_GADGET": {
+			actionToTake = Action.REMOVE_GADGET;
+			break;
+		}
+		case"SPLIT": {
+			actionToTake = Action.SPLIT;
+			break;
+		}
+		default:{
+			actionToTake = Action.NONE;
+			break;
+		}
+		}
+		return actionToTake;
 	}
 	
 	
 	/**
-	 * Connects two boards at the given Wall. The conneection is symmetric. That is that if 
+	 * 
+	 * @param trigger
+	 * @param action
+	 * @param type
+	 */
+	public void addAction(String trigger, String action, ActionType type) {
+		// TODO Action gets read twice. Can fix with two separate methods in Board or by changing method signature
+		// to include Action boardAction and String actionGadget. This is kind of shitty and confusing to others though
+		Action boardAction = readAction(action);
+		switch (type) {
+		case BOARD:
+		{
+			this.addAction(trigger, boardAction);
+			break;
+		}
+		case GADGET:
+		{
+			this.addAction(trigger, action);
+		}
+		case KEYDOWN:
+		{
+			this.addKeyAction(trigger, action, false);
+			break;
+		}
+		case KEYUP:
+		{
+			this.addKeyAction(trigger, action, true);
+			break;
+		}
+		case KEYBOARDDOWN:
+		{
+			this.addKeyAction(trigger, boardAction, false);
+			break;
+		}
+		case KEYBOARDUP:
+		{
+			this.addKeyAction(trigger, boardAction, true);
+			break;
+		}
+		
+		default:
+			throw new RuntimeException("Should never get here. Invlalid ActionType: " + type);
+		}
+	}
+	
+	
+	
+	/**
+	 * Connects two boards at the given Wall. The connection is symmetric. That is that if 
 	 * Board A is connected to Board B a the TOP then Board B is automatically connected to Board A 
 	 * at the BOTTOM
 	 * 
@@ -319,15 +476,46 @@ public class Board {
 	public void addNeightbor(Board neighbor, Wall border) {
 		//TODO
 	}
+	
+	public List<Ball> getBalls() {
+		List<Ball> result = new ArrayList<Ball>(this.balls);
+		return result;
+	}
+	
+	public List<Gadget> getGadgets() {
+		List<Gadget> result = new ArrayList<Gadget>(gadgets);
+		return result;
+	}
 
 	/**
 	 * Sets the board into action for the given amount of time. All balls are moved taking into account the effects
 	 * of gravity and friction. All actions which are triggered during this time are taken. 
 	 * @param time length of time the board is played. 
 	 */
-	private void play(final double time) {
-		//TODO Consider starting a new thread for each Ball on the board. This allows for simultaneous motion and 
-		// easier calculation of ball on ball collisions
+	public void play(final double time) {
+		//TODO Add an event queue so that actions that could not be performed are performed at the earliest possible moment
+			for (Ball ball : balls) {
+				new Thread(() ->  {
+					// TODO Since we're using threads here play will continue.
+					// need to change how BoardAnimation plays the game since play 
+					// no longer needs to be called repeatedly. Also need to account
+					// for newly added balls. 
+					while (true) {
+						try {
+						moveOneBall(ball, time);
+							Thread.sleep(5L);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
+				}, ball.name()).start();
+			}
+//			for (int i = 0; i < this.balls.size(); i++) {
+//					if (!balls.get(i).isTrapped()) {
+//						moveOneBall(balls.get(i), time);
+//					}
+//				}
+			checkRep();
 	}
 
 	/**
@@ -337,7 +525,65 @@ public class Board {
 	 * @param time
 	 */
 	private void moveOneBall(Ball ball, final double time) {
-		//TODO
+		final Gadget NO_COLLISION = new Wall("NO_COLLISION", 0, 0, 0, 0);
+		double collisionTime = Double.POSITIVE_INFINITY;
+		Gadget nextGadget = NO_COLLISION;
+		
+		// Find the gadget with which the ball will collide next
+		for (Gadget gadget : this.gadgets) {
+			if (gadget.collisionTime(ball) < collisionTime) {
+				//TODO This calculation does not account for gravity
+				collisionTime = gadget.collisionTime(ball);
+				nextGadget = gadget;
+			}
+		}
+		
+		// If the ball will not collide with the gadgets check the outer walls of the board. 
+		if (nextGadget == NO_COLLISION) {
+			for (Gadget wall : this.walls) {
+				if (wall.collisionTime(ball) < collisionTime) {
+					collisionTime = wall.collisionTime(ball);
+					nextGadget = wall;
+				}
+			}
+		}
+		
+		// TODO Ball Ball collisions should be calculated
+		
+		// If a ball will collide during the play time perform the collision. 
+		if (collisionTime <= time && nextGadget != NO_COLLISION) {
+			// Move ball to collision point
+		// TODO Could this result in an infinite loop due to small math error?s - Yes
+		//	while (collisionTime > 0) {
+				ball.move(collisionTime, this.gravity, this.friction1, this.friction2);
+//				collisionTime = nextGadget.collisionTime(ball);
+//			}
+			checkRep();
+			nextGadget.reflectBall(ball);
+			
+			// Perform any actions triggered by the collision
+			if (triggers.containsKey(nextGadget)) {
+				for (Gadget gadget : triggers.get(nextGadget)) {
+					//TODO - Triangle rotation needs to be delayed as rotation can cover the ball 
+					// and invalidate the rep. Can use a new thread to do this maybe
+					gadget.takeAction();
+				}
+			}
+			if (boardTriggers.containsKey(nextGadget)) {
+				for (Action action : boardTriggers.get(nextGadget)) {
+					// Come back to this. It should be possible to do this without ball
+				//	this.takeAction(action, ball);
+				}
+			}
+			
+			// Move ball during the rest of time after collision has occurred. 
+			if (ball.getVelocity().length() > 0.0 && collisionTime > 0) {
+				// TODO What about simultaneous collisions
+				moveOneBall(ball, time - collisionTime);
+			}
+		} else {
+			ball.move(time, this.gravity, this.friction1, this.friction2);
+		}
 	}
 
 	/**
@@ -357,7 +603,7 @@ public class Board {
 	 */
 	void addPortal(Portal portal, String name, String board) {
 		portals.put(portal, Arrays.asList(name, board));
-		//TODO Should this also add items to  gadgets?
+		this.addGadget(portal);
 	}
 	
 	/**
@@ -414,43 +660,87 @@ public class Board {
 		throw new NoSuchElementException(name + "board not found");
 	}
 	
+	
+	
+	
+	
+//	//TODO Remove replaced by onKey
+//	void onKeyUp(String key) {
+//		for (String k : keyUpTriggers.keySet()) {
+//			for (Gadget g : keyUpTriggers.get(k)) {
+//				if (k.equals(key)) {
+//					g.takeAction();
+//				}
+//			}
+//		}
+//		for (String k : keyUpBoardTriggers.keySet()) {
+//			for (Action a : keyUpBoardTriggers.get(k)) {
+//				if (k.equals(key)) {
+//					this.takeAction(a);
+//				}
+//			}
+//		}
+//	}
+//	
+//	//TODO Remove replaced by onKey
+//	void onKeyDown(String key) {
+//		for (String k : keyDownTriggers.keySet()) {
+//			for (Gadget g : keyUpTriggers.get(k)) {
+//				if (k.equals(key)) {
+//					g.takeAction();
+//				}
+//			}
+//		}
+//		for (String k : keyDownBoardTriggers.keySet()) {
+//			for (Action a : keyUpBoardTriggers.get(k)) {
+//				if (k.equals(key)) {
+//					this.takeAction(a);
+//				}
+//			}
+//		}
+//	}
+	
+	
 	/**
-	 * Add an action associated with a key press or release
-	 * @param key - key that is pressed or released
-	 * @param action - either a board action from Action or the name of a Gadget who's action should be taken
-	 * @param up - true if the action should be taken when the key is released. false if it should be taken when the key is pressed
+	 * Triggers the actions associated with key in keyTriggers and keyBoardTriggers
+	 * @param key that is pressed or released
+	 * @param keyTriggers map of all trigger to gadget mappings on the board
+	 * @param keyBoardTriggers map of all trigger to board Action mappings on the board. 
 	 */
-	void addKeyAction(String keyname, String action, boolean up) {
-		if (up) {
-			//TODO read action and add to keyUpTriggers
-		} else {
-			//TODO read action and add to keyDownTriggers
-		}
-	}
-	
-	void onKeyUp(String key) {
-		for (String k : keyUpTriggers.keySet()) {
-			for (Gadget g : keyUpTriggers.get(key)) {
-				g.takeAction();
+	private void onKey(String key, Map<String, List<Gadget>> keyTriggers, 
+			Map<String, List<Action>> keyBoardTriggers) {
+		for (String k : keyTriggers.keySet()) {
+			for (Gadget g : keyTriggers.get(k)) {
+				if (k.equals(key)) {
+					g.takeAction();
+				}
 			}
 		}
-		for (String k : keyUpBoardTriggers.keySet()) {
-			for (Action a : keyUpBoardTriggers.get(key)) {
-				this.takeAction(a);
+		for (String k : keyBoardTriggers.keySet()) {
+			for (Action a : keyBoardTriggers.get(k)) {
+				if (k.equals(key)) {
+					this.takeAction(a);
+				}
 			}
 		}
 	}
 	
-	void onKeyDown(String key) {
-		for (String k : keyDownTriggers.keySet()) {
-			for (Gadget g : keyDownTriggers.get(key)) {
-				g.takeAction();
+	
+	private void setCoverage(Gadget gadget) {
+		// TODO This is a good place to practice the visitor method since absorbers cover a different area
+		final int height = gadget.height();
+		final int width = gadget.width();
+		final int x = (int) gadget.position().x();
+		final int y = (int) gadget.position().y();
+		
+		for (int i = x; i < x + width; i++) {
+			for (int j = y; j < y + height; j++) {
+				this.gadgetCoverage[i][j] = 1;
 			}
 		}
-		for (String k : keyDownBoardTriggers.keySet()) {
-			for (Action a : keyDownBoardTriggers.get(key)) {
-				this.takeAction(a);
-			}
+		
+		if (gadget instanceof Absorber) {
+			this.gadgetCoverage[x + width - 1][y + height -1] = 1;
 		}
 	}
 	

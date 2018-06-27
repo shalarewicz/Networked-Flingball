@@ -50,16 +50,16 @@ public class BoardAnimation {
 	                frame.pack();
 	                frame.setLocationRelativeTo(null);
 	                frame.setVisible(true);
-	                frame.addKeyListener(
-	                	new KeyAdapter() {
-							@Override public void keyReleased(KeyEvent e) {
-								System.out.println("released key");
-								board.onKeyUp(KeyNames.keyName.get(e.getKeyCode()));
-							}
-							@Override public void keyPressed(KeyEvent e) {
-								board.onKeyDown(KeyNames.keyName.get(e.getKeyCode()));
-							}
-	                	});
+	                frame.addKeyListener(board.keyListener);
+	                // TODO Remove if putting the listener in board works. 
+//	                	new KeyAdapter() {
+//							@Override public void keyReleased(KeyEvent e) {
+//								board.onKeyUp(KeyNames.keyName.get(e.getKeyCode()));
+//							}
+//							@Override public void keyPressed(KeyEvent e) {
+//								board.onKeyDown(KeyNames.keyName.get(e.getKeyCode()));
+//							}
+//	                	});
 	            }
 	        });
 	        checkRep();
@@ -73,7 +73,7 @@ public class BoardAnimation {
 
 	        public TestPane(Board board) {
 	        	this.board= board;
-	        	this.L = board.getL();
+	        	this.L = board.L;
 	            Timer timer = new Timer();
 	            TimerTask play = new TimerTask() {
 	                @Override
@@ -88,7 +88,7 @@ public class BoardAnimation {
 
 	        @Override
 	        public Dimension getPreferredSize() {
-	            return new Dimension(this.board.getHeight() * this.L, this.board.getWidth() * this.L);
+	            return new Dimension(this.board.HEIGHT * this.L, this.board.WIDTH * this.L);
 	        }
 
 	        @Override
@@ -96,7 +96,7 @@ public class BoardAnimation {
 	            super.paintComponent(graphics);
 	            Graphics2D g2d = (Graphics2D) graphics.create();
 	            graphics.setColor(Color.BLACK);
-	    		graphics.fillRect(0, 0, this.board.getHeight() * this.L, this.board.getWidth() * this.L);
+	    		graphics.fillRect(0, 0, this.board.HEIGHT * this.L, this.board.WIDTH * this.L);
 	    		
 	    		final ImageObserver NO_OBSERVER_NEEDED = null;
 	    		

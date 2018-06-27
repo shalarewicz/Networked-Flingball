@@ -251,12 +251,12 @@ public class BoardParser {
             				switch (greatGrandChild.name()) {
             				case KEYUP:	// KEYUP ::= 'keyup' 'key' '=' KEY 'action' '=' NAME '\n';
             				{
-            					board.addKeyAction(key, action, true);
+            					board.addAction(key, action, Board.ActionType.KEYUP);
             					
             				}
             				case KEYDOWN:  // KEYDOWN ::= 'keydown' 'key' '=' KEY 'action' '=' NAME '\n';
             				{
-            					board.addKeyAction(key, action, false);
+            					board.addAction(key, action, Board.ActionType.KEYDOWN);
             				}
             				default:
             				{
@@ -269,46 +269,14 @@ public class BoardParser {
             			{
             				String trigger = greatGrandChildren.get(0).text();
             				String action = greatGrandChildren.get(1).text();
-            				Action actionToTake;
-        					switch (action) {
-        					case "FIRE_ALL":{
-        						actionToTake = Action.FIRE_ALL;
-        						break;
-        					}
-        					case "ADD_BALL":{
-        						actionToTake = Action.ADD_BALL;
-        						break;
-        					}
-        					case "ADD_SQUARE":{
-        						actionToTake = Action.ADD_SQUARE;
-        						break;
-        					}
-        					case "ADD_CIRCLE":{
-        						actionToTake = Action.ADD_CIRCLE;
-        						break;
-        					}
-        					case "ADD_TRIANGLE":{
-        						actionToTake = Action.ADD_TRIANGLE;
-        						break;
-        					}
-        					case "ADD_ABSORBER":{
-        						actionToTake = Action.ADD_ABSORBER;
-        						break;
-        					}
-        					case "REVERSE_BALLS":{
-        						actionToTake = Action.REVERSE_BALLS;
-        						break;
-        					}
-        					default:{
-        						// action is a gadget
-        						board.addAction(trigger, action);;
-        						continue;
-        					}
-        					}
-        					// action is a Board Action
+            				// TODO Action gets read twice. Can fix with two separate methods in Board
+            				Action actionToTake = Board.readAction(action);
         					
-            				board.addAction(trigger, actionToTake);
-            				continue;
+        					if (actionToTake.equals(Action.NONE)) {
+        						board.addAction(trigger, action, Board.ActionType.GADGET);
+        					} else {
+        						board.addAction(trigger, action, Board.ActionType.BOARD);
+        					}
             			}
             			default:
             				System.out.println("Could not match COMMAND: " + grandChild.name());
