@@ -39,7 +39,7 @@ public class Ball {
 
 	private void checkRep() {
 		assert radius >= 0;
-		assert Math.abs(this.boardVelocity.length()) <= 200;
+		assert Math.abs(this.boardVelocity.length()) <= 200 : this.NAME + "velocity = " + this.boardVelocity.length();
 		assert Math.abs(this.boardVelocity.length()) >= 0;
 	}
 	
@@ -372,6 +372,10 @@ public class Ball {
 		this.cartesianVelocity = Physics.reflectRotatingWall(line, pivot, angularVelocity,
 					new Circle(this.cartesianCenter, this.radius), this.cartesianVelocity, reflectionCoeff);
 		this.boardVelocity = convertVelocity(this.cartesianVelocity);
+		if (this.cartesianVelocity.length() > 200) {
+			this.cartesianVelocity = new Vect(this.cartesianVelocity.angle(), 190);
+		}
+		this.boardVelocity = convertVelocity(this.cartesianVelocity);
 		checkRep();
 	}
 	
@@ -402,7 +406,11 @@ public class Ball {
 	public void reflectRotatingCircle(Circle circle, Vect pivot, double angularVelocity, double relectionCoeff) {
 		this.cartesianVelocity = Physics.reflectRotatingCircle(circle, pivot, angularVelocity, 
 				new Circle(this.cartesianCenter, this.radius), this.cartesianVelocity, relectionCoeff);
+		if (this.cartesianVelocity.length() > 200) {
+			this.cartesianVelocity = new Vect(this.cartesianVelocity.angle(), 190);
+		}
 		this.boardVelocity = convertVelocity(this.cartesianVelocity);
+		
 		checkRep();
 	}
 	
