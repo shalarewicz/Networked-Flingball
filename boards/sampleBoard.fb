@@ -1,0 +1,50 @@
+board name=test gravity=0 friction1 = 0.0 friction2 = 0.0
+
+#This is a comment
+#This is a another comment
+
+ball name = ball1 x=1.0 y = 4 xVelocity = 100 yVelocity = 89
+ball name = ball2 x=1 y = 4 xVelocity =87 yVelocity = 45
+ball name = ball3 x=11.75 y =0.25 xVelocity = 190 yVelocity = 40
+ball name = ball4 x = 5 y = 1.5 xVelocity =20 yVelocity = 75
+
+squareBumper name=testbump1 x=12 y=4
+squareBumper name=testbump2 x=13 y=4
+squareBumper name=testbump3 x=14 y=4
+squareBumper name=testbump4 x=15 y=4
+squareBumper name=testbump5 x=16 y=4
+squareBumper name=testbump6 x=17 y=4
+squareBumper name=testbump7 x=18 y=4
+
+circleBumper name = testCircle x = 10 y = 6
+circleBumper name = testCircle2 x = 19 y = 1
+
+
+triangleBumper name=testTriangle x=4 y=7
+triangleBumper name=testTriangle2 x=4 y=14 orientation=0
+triangleBumper name=testTriangle3 x=2 y=8 orientation=90
+triangleBumper name=testTriangle4 x=10 y=5 orientation=180
+triangleBumper name=testTriangle5 x=4 y=13 orientation=270
+triangleBumper name=testTriangle6 x=18 y=17 orientation=90
+triangleBumper name=testTriangle7 x=15 y=17 orientation=0
+
+absorber name = testAbsorber x = 15 y = 19 width = 4 height = 1
+
+fire trigger = testAbsorber action = testAbsorber
+
+fire trigger = testTriangle6 action = ADD_SQUARE
+
+fire trigger = testCircle action = ADD_ABSORBER
+fire trigger = testCircle2 action = ADD_SQUARE
+fire trigger = testTriangle6 action = ADD_CIRCLE
+fire trigger = testTriangle5 action = ADD_TRIANGLE
+fire trigger = testTriangle4 action = ADD_TRIANGLE
+fire trigger = testTriangle3 action = ADD_ABSORBER
+fire trigger = testTriangle2 action = ADD_TRIANGLE
+fire trigger = testbump1 action = ADD_CIRCLE
+fire trigger = testbump2 action = ADD_SQUARE
+fire trigger = testbump3 action = ADD_TRIANGLE
+fire trigger = testbump4 action = ADD_SQUARE
+fire trigger = testbump5 action = ADD_CIRCLE
+fire trigger = testbump6 action = ADD_SQUARE
+fire trigger = testbump7 action = ADD_CIRCLE

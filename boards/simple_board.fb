@@ -24,3 +24,4 @@ rightFlipper name=FlipR x=12 y=7 orientation=0
 
 # make the absorber self-triggering
  fire trigger=Abs action=Abs 
+ 
