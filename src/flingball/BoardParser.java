@@ -17,7 +17,6 @@ import flingball.gadgets.*;
 
 public class BoardParser {
 
-
 	public static void main(final String[] args) throws IOException{
 		String test = "boards/sampleBoard.fb";
 		try {
@@ -195,6 +194,7 @@ public class BoardParser {
             						}
             					}
             					board.addGadget(new LeftFlipper(name, x, y, o));
+            					continue;
             					
             				}
             				case RIGHTFLIPPER: // RIGHTFLIPPER ::= 'rightFlipper' 'name' '=' NAME 'x' '=' INTEGER 'y' '=' INTEGER ('orientation' '=' ORIENTATION)? '\n';
@@ -213,6 +213,7 @@ public class BoardParser {
             						}
             					}
             					board.addGadget(new RightFlipper(name, x, y, o));
+            					continue;
             				}
             				default:
             				{
@@ -239,6 +240,7 @@ public class BoardParser {
         					// TODO is this necessary? addPortal can just do it. 
         					// board.addGadget(portal);
         					board.addPortal(portal, target, otherBoard);
+        					continue;
             			}
             			
             			case KEYEVENT: //KEYEVENT ::= KEYDOWN | KEYUP;
@@ -252,11 +254,13 @@ public class BoardParser {
             				case KEYUP:	// KEYUP ::= 'keyup' 'key' '=' KEY 'action' '=' NAME '\n';
             				{
             					board.addAction(key, action, Board.ActionType.KEYUP);
+            					continue;
             					
             				}
             				case KEYDOWN:  // KEYDOWN ::= 'keydown' 'key' '=' KEY 'action' '=' NAME '\n';
             				{
             					board.addAction(key, action, Board.ActionType.KEYDOWN);
+            					continue;
             				}
             				default:
             				{
@@ -277,6 +281,7 @@ public class BoardParser {
         					} else {
         						board.addAction(trigger, action, Board.ActionType.BOARD);
         					}
+        					continue;
             			}
             			default:
             				System.out.println("Could not match COMMAND: " + grandChild.name());

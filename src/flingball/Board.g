@@ -1,15 +1,16 @@
 @skip whitespace {
 	
 	BOARD ::= boardName '\n'* ((comment '\n'*) | (command '\n'*))* ;
-	boardName ::='board name''='NAME (GRAVITY)? (FRICTION1)? (FRICTION2)? '\n';
-	comment ::= '#' [A-Za-z0-9\.'=]* '\n';
+	boardName ::='board' 'name' '='NAME (GRAVITY)? (FRICTION1)? (FRICTION2)? '\n';
+	comment ::= '#' [\-A-Za-z0-9\.'=]* '\n';
 	command ::= BALL | BUMPER | ABSORBER | FLIPPER | PORTAL | KEYEVENT | ACTION;
 	
 	BALL ::= 'ball' 'name' '=' NAME 'x' '='FLOAT 'y' '='FLOAT 'xVelocity' '=' FLOAT 'yVelocity' '=' FLOAT '\n';
 	ABSORBER ::= 'absorber' 'name' '=' NAME 'x' '=' INTEGER 'y' '=' INTEGER 'width' '=' INTEGER 'height' '=' INTEGER '\n';
 	
 	ACTION ::= 'fire' 'trigger' '=' NAME 'action' '=' (NAME | ACTIONTOTAKE) '\n';
-	ACTIONTOTAKE ::= 'FIRE' | 'ROTATE'|'SPIN' | 'FIRE_ALL' | 'ADD_BALL' | 'ADD_SQUARE' | 'ADD_CIRCLE' | 'ADD_TRIANGLE' | 'ADD_ABSORBER' | 'REVERSE_BALLS';
+	ACTIONTOTAKE ::= 'FIRE' | 'ROTATE'|'SPIN' | 'FIRE_ALL' | 'ADD_BALL' | 'ADD_SQUARE' | 
+					 'ADD_CIRCLE' | 'ADD_TRIANGLE' | 'ADD_ABSORBER' | 'REVERSE_BALLS';
 	
 	BUMPER ::= triangleBumper | circleBumper | squareBumper;
 	squareBumper ::= 'squareBumper name' '=' NAME 'x' '=' INTEGER 'y' '=' INTEGER '\n';
