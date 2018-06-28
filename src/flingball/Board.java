@@ -1,8 +1,10 @@
 package flingball;
 
+import java.awt.Color;
+import java.awt.Graphics;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
+import java.awt.image.ImageObserver;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -14,12 +16,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import javax.swing.JFrame;
+import javax.swing.JPanel;
 
 import flingball.gadgets.*;
 import physics.Vect;
 
-public class Board {
+public class Board extends JPanel{
 	
 	/**
 	 * A board on which the game flingball can be played. Objects which can be 
@@ -27,7 +29,7 @@ public class Board {
 	 * that implements the the Gadget interface (including Square, Triangle and
 	 * Circle Bumpers, Absorbers, Portals and Flippers. 
 	 * 
-	 * A flingabll board is a 20L x 20L grid with the origin in the upper
+	 * A flingball board is a 20L x 20L grid with the origin in the upper
 	 * left-hand corner. Gadgets are placed in one or more squares on the grid. 
 	 * No two gadgets are allowed to occupy the same square on the grid. The default
 	 * gadget limit for a board is 60. 
@@ -292,8 +294,8 @@ public class Board {
 	 */
 	private void addAction(String trigger, Action action) {
 		Gadget gTrigger = getGadget(trigger);
-		if (!triggers.containsKey(gTrigger)) {
-			triggers.put(gTrigger, new ArrayList<Gadget>());
+		if (!boardTriggers.containsKey(gTrigger)) {
+			boardTriggers.put(gTrigger, new ArrayList<Action>());
 		}
 		boardTriggers.get(gTrigger).add(action);
 	}
@@ -493,23 +495,24 @@ public class Board {
 	 * @param time length of time the board is played. 
 	 */
 	public void play(final double time) {
+		
 		//TODO Add an event queue so that actions that could not be performed are performed at the earliest possible moment
 			for (Ball ball : balls) {
-				new Thread(() ->  {
+			//	new Thread(() ->  {
 					// TODO Since we're using threads here play will continue.
 					// need to change how BoardAnimation plays the game since play 
 					// no longer needs to be called repeatedly. Also need to account
 					// for newly added balls. 
-					while (true) {
-						try {
+	//				while (true) {
+	//					try {
 						moveOneBall(ball, time);
-							Thread.sleep(5L);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
+//							Thread.sleep(5L);
+//						} catch (InterruptedException e) {
+//							e.printStackTrace();
+//						}
 					}
-				}, ball.name()).start();
-			}
+				//}, ball.name()).start();
+//			}
 //			for (int i = 0; i < this.balls.size(); i++) {
 //					if (!balls.get(i).isTrapped()) {
 //						moveOneBall(balls.get(i), time);
@@ -549,7 +552,6 @@ public class Board {
 		}
 		
 		// TODO Ball Ball collisions should be calculated
-		
 		// If a ball will collide during the play time perform the collision. 
 		if (collisionTime <= time && nextGadget != NO_COLLISION) {
 			// Move ball to collision point
@@ -744,7 +746,30 @@ public class Board {
 		}
 	}
 	
-	
+	@Override
+	public void paint(Graphics graphics) {
+		super.paint(graphics);
+		graphics.setColor(Color.BLACK);
+		graphics.fillRect(0, 0, this.WIDTH * L, this.HEIGHT * L);
+		
+		final ImageObserver NO_OBSERVER_NEEDED = null;
+		
+		graphics.setColor(Color.BLUE);
+		for (Ball ball : balls) {
+			final Vect anchor = ball.getAnchor().times(L);
+			
+			graphics.drawImage(ball.generate(L), (int) anchor.x(), (int) anchor.y(), NO_OBSERVER_NEEDED);
+					
+		}
+		
+		for (Gadget gadget : gadgets) {
+			final int xAnchor = (int) gadget.position().x()*L;
+			final int yAnchor = (int) gadget.position().y()*L;
+			
+			graphics.drawImage(gadget.generate(L), xAnchor, yAnchor, NO_OBSERVER_NEEDED);
+			
+		}
+	}
 	
 	
 	
