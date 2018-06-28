@@ -54,7 +54,8 @@ public class LeftFlipper implements Bumper {
 	private  Wall port, starboard;
 	private final int angularVelocity = 1080;
 	private Orientation orientation = Orientation.ZERO;
-	private boolean rotating = true;
+	private boolean rotating = false;
+	private boolean rotated = false;
 	private Angle degreesRotated = Angle.ZERO;
 	
 	private final static double RADIUS = 0.25;
@@ -189,7 +190,7 @@ public class LeftFlipper implements Bumper {
 			throw new RuntimeException("Should never get here. Invalid LeftFlipper Orientation");
 		}
 		}
-		
+		System.out.println("Created " + this);
 	}
 	
 	
@@ -280,13 +281,14 @@ public class LeftFlipper implements Bumper {
 				ball.reflectCircle(this.tail);
 			} else if (collisionTime == this.port.collisionTime(ball)){
 				this.port.reflectBall(ball);
-			} else if (collisionTime == this.port.collisionTime(ball)){
+			} else if (collisionTime == this.starboard.collisionTime(ball)){
 				this.starboard.reflectBall(ball);
 			} else {
-				throw new RuntimeException("Rotating LeftFlipper reflection should never get here");
+				throw new RuntimeException("LeftFlipper " + name + " reflection should never get here");
 			}
 			
 		}
+		
 
 	}
 
@@ -297,13 +299,29 @@ public class LeftFlipper implements Bumper {
 
 	@Override
 	public void takeAction() {
+		if (this.rotating) return; 
 		new Thread(() ->  {
 			if (!this.rotating) {
-				this.rotating = true;
-				while (this.rotating) {
-					this.rotate(new Angle(Math.PI / 180 * this.angularVelocity * 0.005));
+				Angle degreeIncrement = new Angle(Math.PI / 180 * this.angularVelocity * 0.005); //TODO REPLACE WITH FRAME RATE
+				if (this.rotated) {
+					degreeIncrement = Angle.RAD_PI.plus(Angle.RAD_PI).minus(degreeIncrement);
+				}
+			//	System.out.println("Rotate " + degreeIncrement.radians() + " degrees");
+				while (true) {
+					if (degreesRotated.plus(degreeIncrement).compareTo(Angle.RAD_PI_OVER_TWO) >= 0) {
+						//TODO Constant Rotation results in a floating point errors. If rotation is complete. Just
+						// reset all values to where they are supposed to be. 
+				//		System.out.println(Angle.RAD_PI_OVER_TWO.minus(this.degreesRotated).radians());
+					//	this.rotate(Angle.RAD_PI_OVER_TWO.minus(degreesRotated));
+				//		System.out.println("Rotation complete " + degreesRotated);
+					// 	this.degreesRotated = Angle.ZERO;
+						this.rotated = !this.rotated;
+						break;
+					} else {
+						this.rotate(degreeIncrement);
+					}
 					try {
-						Thread.sleep(5L);
+						Thread.sleep(5L);//TODO REPLACE WITH FRAME RATE
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -325,10 +343,7 @@ public class LeftFlipper implements Bumper {
 			this.port = port.rotateAround(this.pivot.getCenter(), angle);
 			this.starboard = starboard.rotateAround(this.pivot.getCenter(), angle);
 			this.degreesRotated = this.degreesRotated.plus(angle);
-			if(this.degreesRotated.equals(Angle.RAD_PI_OVER_TWO)) {
-				this.rotating = false;
-				this.degreesRotated = Angle.ZERO;
-			}
+			
 	}
 
 	@Override
@@ -343,21 +358,39 @@ public class LeftFlipper implements Bumper {
 
 	@Override
 	public BufferedImage generate(int L) {
-		BufferedImage output = new BufferedImage(500, 500, BufferedImage.TYPE_4BYTE_ABGR);
+		BufferedImage output = new BufferedImage(2 * L, 2 * L, BufferedImage.TYPE_4BYTE_ABGR);
         Graphics2D graphics = (Graphics2D) output.getGraphics();
         
         graphics.setColor(Color.ORANGE);
-        graphics.fillArc((int) ((this.pivot.getCenter().x() - RADIUS) * L), (int) ((-this.pivot.getCenter().y() - RADIUS) * L), 
-        		(int) (RADIUS * 2 * L), (int) (RADIUS * 2 * L), 0, 360);
-        graphics.fillArc((int) ((this.tail.getCenter().x() - RADIUS) * L), (int) ((-this.tail.getCenter().y() - RADIUS) * L), 
-        		(int) (RADIUS * 2 * L), (int) (RADIUS * 2 * L), 0, 360);
-//        TODO:System.out.println(-this.tail.getCenter().y());
-//        System.out.println(this.port);
-//        System.out.println(this.starboard);
-//        System.out.println(this.tail);
-//        System.out.println(this.pivot);
-        final int[] xPoints = {(int) (this.port.start().x() * L), (int) (this.port.end().x() * L),(int) (this.starboard.end().x() * L), (int) (this.starboard.start().x() * L) };
-        final int[] yPoints = {(int) (-this.port.start().y() * L), (int) (-this.port.end().y() * L),(int) (-this.starboard.end().y() * L), (int) (-this.starboard.start().y() * L) };
+        
+        
+        // Can convert from 20 x 20 grid by taking the x,y coordinates % 2. This is because a flipper has a bounding box of 
+        // size 2L x 2L. For graphics we need the relative position in that box.
+        // This doesn't work when the coordinate is odd though
+        
+        final int xAnchor = this.x;
+        final int yAnchor = -this.y;
+        
+        int xpivot = (int) ((this.pivot.getCenter().x() - xAnchor - RADIUS) * L);
+        int ypivot = (int) ((-this.pivot.getCenter().y() - yAnchor- RADIUS) * L);
+        graphics.fillArc(xpivot, ypivot, (int) (RADIUS * 2 * L), (int) (RADIUS * 2 * L), 0, 360);
+        
+        int xtail = (int) ((this.tail.getCenter().x() - xAnchor - RADIUS) * L);
+        int ytail = (int) ((-this.tail.getCenter().y() - yAnchor - RADIUS) * L);
+        graphics.fillArc(xtail, ytail, (int) (RADIUS * 2 * L), (int) (RADIUS * 2 * L), 0, 360);
+        
+        final int[] xPoints = {
+        		(int) ((this.port.start().x() - xAnchor) * L), 
+        		(int) ((this.port.end().x() - xAnchor) * L),
+        		(int) ((this.starboard.end().x() - xAnchor) * L), 
+        		(int) ((this.starboard.start().x() - xAnchor) * L) 
+        		};
+        final int[] yPoints = {
+        		(int) ((-this.port.start().y() - yAnchor) * L), 
+        		(int) ((-this.port.end().y() - yAnchor) * L),
+        		(int) ((-this.starboard.end().y() - yAnchor) * L), 
+        		(int) ((-this.starboard.start().y() - yAnchor) * L)
+        		};
         graphics.fillPolygon(xPoints, yPoints, 4);
         return output;
 	}
@@ -385,4 +418,8 @@ public class LeftFlipper implements Bumper {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return "LeftFlipper: " + name + " " + this.position();
+	}
 }
