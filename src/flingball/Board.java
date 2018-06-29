@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentMap;
 import javax.swing.JPanel;
 
 import flingball.gadgets.*;
+import physics.Physics;
 import physics.Vect;
 
 public class Board extends JPanel{
@@ -256,6 +257,9 @@ public class Board extends JPanel{
 		this.gravity = gravity;
 		this.friction1 = friction1;
 		this.friction2 = friction2;
+		// Set a sufficiently small foresight for the physics engine to avoid
+		// mistimed flipper collisions.
+		Physics.setForesight(0.0001);
 		checkRep();
 	}
 	

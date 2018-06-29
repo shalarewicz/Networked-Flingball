@@ -2,17 +2,10 @@ package flingball.gadgets;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.image.BufferedImage;
 
-import javax.sound.sampled.Line;
-import javax.swing.ImageIcon;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-
 import flingball.Ball;
+import flingball.BoardAnimation;
 import flingball.Orientation;
 import physics.Angle;
 import physics.Circle;
@@ -48,12 +41,14 @@ public class LeftFlipper implements Bumper {
 	
 	private final int x, y;
 	private final String name;
-	private final String trigger = NO_TRIGGER; //TODO Why is this final?
+	private final Orientation orientation;
+	private String trigger = NO_TRIGGER; 
 	private double reflectionCoeff = DEFAULT_FLIPPER_REFLECTION_COEFF;
-	private  Circle pivot, tail;
-	private  Wall port, starboard;
+	private Circle pivot, tail;
+	private Wall port, starboard;
+	
+	
 	private final int angularVelocity = 1080;
-	private Orientation orientation = Orientation.ZERO;
 	private boolean rotating = false;
 	private boolean rotated = false;
 	private Angle degreesRotated = Angle.ZERO;
@@ -62,7 +57,8 @@ public class LeftFlipper implements Bumper {
 	private final static int HEIGHT = 2;
 	private final static int WIDTH = 2;
 	
-	/*w
+	
+	/*
 	 * AF(name, x, y, pivot, tail, port starboard) ::= A flipper called name with anchor (x,-y) and an 
 	 * ovular shape depicted below
 	 * 
@@ -83,7 +79,7 @@ public class LeftFlipper implements Bumper {
 	 * 		TODO
 	 * 
 	 * Thread Safety Argument
-	 * 		TODO Immutable	
+	 * 		TODO 	
 	 */
 	
 	private void checkRep() {
@@ -99,55 +95,45 @@ public class LeftFlipper implements Bumper {
 		 * 4. As port/starboard are parallel of equal length, tangential to pivot tail and separated by 2*radius
 		 *    then the line connecting the endpoints muct bisect the center of pivot/tail respectively. 
 		 */
+		
 		// Check port and starboard are parallel (equal slopes)
 		final double slopePort = slope(port);
 		final double slopeStar = slope(starboard);
-		assert slopePort == slopeStar : "Walls of LeftFlipper " + name + " are not parallel";
+		assert slopePort == slopeStar || (Double.isNaN(slopePort) && Double.isNaN(slopeStar)): 
+			"Walls of LeftFlipper " + name + " are not parallel";
 		
 		final Vect portPivot = port.start();
 		final Vect portTail = port.end();
-		final Vect starPivot = port.start();
-		final Vect starTail = port.end();
+		final Vect starPivot = starboard.start();
+		final Vect starTail = starboard.end();
 		final double pivotRadius = pivot.getRadius();
 		final double tailRadius = tail.getRadius();
 		final Vect pivotCenter = pivot.getCenter();
 		final Vect tailCenter = tail.getCenter();
 		
-		// Check if port and starboard are tangential (distance from endpoints to center of circles equals radius)
-		assert Math.sqrt(portPivot.distanceSquared(pivotCenter)) == pivotRadius : name + ": Port flipper wall bisects pivot";
-		assert Math.sqrt(portTail.distanceSquared(tailCenter)) == tailRadius : name + ": Port flipper wall bisects tail";
-		//TODO Because port/starboard are parallel this second check is unnecessary??
-		assert Math.sqrt(starPivot.distanceSquared(pivotCenter)) == pivotRadius : name + ": Starboard flipper wall bisects pivot";
-		assert Math.sqrt(starPivot.distanceSquared(tailCenter)) == tailRadius : name + ": Starboard flipper wall bisects tail";
+		assert pivotRadius == tailRadius && pivotRadius == RADIUS : name + ": Pivot/Tail radius != RADIUS";
 		
-		// Check pivot and tail same size
-		assert pivotRadius == tailRadius : name + ": Pivot and Tail different sizes";
+		// Error tolerance of 0.001 is allowed to prevent floating point math errors
+		// Check if port and starboard are tangential (distance from endpoints to center of circles equals radius)
+		// Because lines are parallel only need to check and end point of each line. 
+		assert Math.abs(Math.sqrt(portPivot.distanceSquared(pivotCenter)) - pivotRadius) < 0.001 : name + ": Port flipper wall bisects pivot";
+		assert Math.abs(Math.sqrt(starPivot.distanceSquared(pivotCenter)) - pivotRadius) < 0.001 : name + ": Starboard flipper wall bisects pivot";
 		
 		// Check port and starboard same length
-		assert portPivot.distanceSquared(portTail) == starPivot.distanceSquared(starTail) : name + ": Port and Starboard different length";
-		
-		// Check that distance between the lines is equal to the diameter of pivot/tail. 
-		assert Math.sqrt(portPivot.distanceSquared(starPivot)) == pivotRadius * 2;
+		assert Math.abs(portPivot.distanceSquared(portTail) - starPivot.distanceSquared(starTail)) < 0.001 : name + ": Port and Starboard different length";
 		
 		// Check distance between the centers of pivot and tail must be equal to the length of port/starboard
-		assert portPivot.distanceSquared(portTail) == pivotCenter.distanceSquared(tailCenter);
+		assert Math.abs(portPivot.distanceSquared(portTail) - pivotCenter.distanceSquared(tailCenter)) < 0.001 ;
 		
 	}
 	
-	public LeftFlipper(String name, int x, int y) {
-		this.name = name;
-		this.x = x;
-		this.y = -y;
-		
-		this.pivot = new Circle(x + RADIUS, -y - RADIUS, RADIUS);
-		this.tail = new Circle(x + RADIUS, -y - 2 + RADIUS, RADIUS);
-		this.port = new Wall(name + ":port", (double) x, -y -RADIUS, (double) x, -y -2 + RADIUS);
-		this.starboard = new Wall(name + ":starboard", x + 2 * RADIUS, -y -RADIUS, x + 2 * RADIUS, -y -2 + RADIUS);
-
-	//	this.checkRep();
-		
-	}
-	
+	/**
+	 * Creates a LeftFliper with the given orientation and an anchor of (x,y) on a flingball board. 
+	 * @param name name of the flipper
+	 * @param x x coordinate of the flipper on a flingball board
+	 * @param y y coordinate of the flipper on a flingball board
+	 * @param o Orientation of the flipper
+	 */
 	public LeftFlipper(String name, int x, int y, Orientation o) {
 		this.name = name;
 		this.x = x;
@@ -190,7 +176,7 @@ public class LeftFlipper implements Bumper {
 			throw new RuntimeException("Should never get here. Invalid LeftFlipper Orientation");
 		}
 		}
-		System.out.println("Created " + this);
+		this.checkRep();
 	}
 	
 	
@@ -242,10 +228,15 @@ public class LeftFlipper implements Bumper {
 	@Override
 	public double collisionTime(Ball ball) {
 		double collisionTime = ball.timeUntilCircleCollision(this.pivot);
-		if (this.rotating) {
+		if (this.rotating && !this.rotated) {
 			collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), this.angularVelocity), collisionTime);
 			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity), collisionTime);
 			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity),collisionTime);
+			
+		} else if (this.rotating) {
+			collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), -angularVelocity), collisionTime);
+			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), -angularVelocity), collisionTime);
+			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), -angularVelocity),collisionTime);
 			
 		} else {
 			collisionTime = Math.min(ball.timeUntilCircleCollision(tail), collisionTime);
@@ -257,14 +248,15 @@ public class LeftFlipper implements Bumper {
 
 	@Override
 	public void reflectBall(Ball ball) {
-		// TODO Auto-generated method stub
 		double collisionTime = this.collisionTime(ball);
 		if (collisionTime == ball.timeUntilCircleCollision(this.pivot)) {
 			ball.reflectCircle(this.pivot);
 			return;
 		}
-		if (this.rotating) {
-			//TODO Don't forget about when the ball hits a flipper moving away from it
+		
+		// TODO Should probably go with whatever wall has the smallest collision time. 
+		if (this.rotating && !this.rotated) {
+			// Flipper is rotating in the counterclockwise direction from its starting position to its rotated position
 			if (collisionTime == ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), angularVelocity)) {
 				ball.reflectRotatingCircle(this.tail, this.pivot.getCenter(), angularVelocity, this.reflectionCoeff);
 			} else if (collisionTime == this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), this.angularVelocity)) {
@@ -272,11 +264,23 @@ public class LeftFlipper implements Bumper {
 			} else if (collisionTime == this.starboard.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), this.angularVelocity)) {
 				this.starboard.reflectBallRotating(ball, this.pivot.getCenter(), angularVelocity, reflectionCoeff);
 			} else {
-				throw new RuntimeException("Rotating LeftFlipper reflection should never get here");
+				throw new RuntimeException("Rotating LeftFlipper counterclockwise reflection should never get here");
 			}
 			
-		} else {
-			
+		} else if (this.rotating) {
+			// Flipper is rotating in the clockwise direction from its rotated position back to its starting position
+			if (collisionTime == ball.timeUntilRoatatingCircleCollision(tail, pivot.getCenter(), -angularVelocity)) {
+				ball.reflectRotatingCircle(tail, pivot.getCenter(), -angularVelocity, reflectionCoeff);
+			} else if (collisionTime == port.timeUntilRotatingWallCollision(ball, pivot.getCenter(), -angularVelocity)) {
+				this.port.reflectBallRotating(ball, pivot.getCenter(), -angularVelocity, reflectionCoeff);
+			} else if (collisionTime == starboard.timeUntilRotatingWallCollision(ball, pivot.getCenter(), -angularVelocity)) {
+				this.starboard.reflectBallRotating(ball, pivot.getCenter(), -angularVelocity, reflectionCoeff);
+			} else {
+				throw new RuntimeException("Rotating LeftFlipper clockwise reflection should never get here");
+			}
+		}
+		else {
+			// Flipper is not rotating
 			if (collisionTime == ball.timeUntilCircleCollision(tail)) {
 				ball.reflectCircle(this.tail);
 			} else if (collisionTime == this.port.collisionTime(ball)){
@@ -288,7 +292,6 @@ public class LeftFlipper implements Bumper {
 			}
 			
 		}
-		
 
 	}
 
@@ -296,34 +299,43 @@ public class LeftFlipper implements Bumper {
 	public String getTrigger() {
 		return this.trigger;
 	}
+	
+	@Override
+	public void setTrigger(String trigger) {
+		this.trigger = trigger;
+	}
 
 	@Override
 	public void takeAction() {
 		if (this.rotating) return; 
 		new Thread(() ->  {
 			if (!this.rotating) {
-				Angle degreeIncrement = new Angle(Math.PI / 180 * this.angularVelocity * 0.005); //TODO REPLACE WITH FRAME RATE
+				this.rotating = true;
+				Angle degreeIncrement = new Angle(Math.PI / 180 * this.angularVelocity * BoardAnimation.FRAME_RATE / 1000); 
+				Angle totalRotationAngle = Angle.DEG_90;
+				
 				if (this.rotated) {
+					totalRotationAngle = Angle.DEG_270;
 					degreeIncrement = Angle.RAD_PI.plus(Angle.RAD_PI).minus(degreeIncrement);
 				}
-			//	System.out.println("Rotate " + degreeIncrement.radians() + " degrees");
+				final Circle finalTail = Physics.rotateAround(this.tail, this.pivot.getCenter(), totalRotationAngle);
+				final Wall finalPort = this.port.rotateAround(this.pivot.getCenter(), totalRotationAngle);
+				final Wall finalStarboard = this.starboard.rotateAround(this.pivot.getCenter(), totalRotationAngle);
+				
 				while (true) {
 					if (degreesRotated.plus(degreeIncrement).compareTo(Angle.RAD_PI_OVER_TWO) >= 0) {
-						//TODO Constant Rotation results in a floating point errors. If rotation is complete. Just
-						// reset all values to where they are supposed to be. 
-				//		System.out.println(Angle.RAD_PI_OVER_TWO.minus(this.degreesRotated).radians());
-					//	this.rotate(Angle.RAD_PI_OVER_TWO.minus(degreesRotated));
-				//		System.out.println("Rotation complete " + degreesRotated);
-					// 	this.degreesRotated = Angle.ZERO;
+						this.tail = finalTail;
+						this.port = finalPort;
+						this.starboard = finalStarboard;
 						this.rotated = !this.rotated;
+						this.rotating = false;
 						break;
 					} else {
 						this.rotate(degreeIncrement);
 					}
 					try {
-						Thread.sleep(5L);//TODO REPLACE WITH FRAME RATE
+						Thread.sleep(BoardAnimation.FRAME_RATE);
 					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
@@ -343,16 +355,14 @@ public class LeftFlipper implements Bumper {
 			this.port = port.rotateAround(this.pivot.getCenter(), angle);
 			this.starboard = starboard.rotateAround(this.pivot.getCenter(), angle);
 			this.degreesRotated = this.degreesRotated.plus(angle);
+			checkRep();
 			
 	}
 
 	@Override
 	public boolean ballOverlap(Ball ball) {
-		// TODO Auto-generated method stub
 		return Physics.distanceSquared(ball.getCartesianCenter(), this.tail.getCenter()) >= ball.getRadius() &&
 			   Physics.distanceSquared(ball.getCartesianCenter(), this.pivot.getCenter()) >= ball.getRadius();
-			   
-			   // TODO Use graphics2d.hit()
 	}
 
 
@@ -364,10 +374,7 @@ public class LeftFlipper implements Bumper {
         graphics.setColor(Color.ORANGE);
         
         
-        // Can convert from 20 x 20 grid by taking the x,y coordinates % 2. This is because a flipper has a bounding box of 
-        // size 2L x 2L. For graphics we need the relative position in that box.
-        // This doesn't work when the coordinate is odd though
-        
+        // Use anchors to shift positions so an image can be drawn on a 2 x 2 grid
         final int xAnchor = this.x;
         final int yAnchor = -this.y;
         
@@ -395,16 +402,6 @@ public class LeftFlipper implements Bumper {
         return output;
 	}
 	
-//	public static void main(String[] args) {
-//		LeftFlipper flipper = new LeftFlipper("test", 0, 0, Orientation.TWO_SEVENTY);
-//		flipper.rotate(Angle.RAD_PI_OVER_FOUR);
-//		JFrame frame = new JFrame("Flipper Test");
-//		frame.setDefaultCloseOperation(frame.EXIT_ON_CLOSE);
-//		frame.add(new JLabel(new ImageIcon(flipper.generate(100))));
-//		frame.pack();
-//	    frame.setVisible(true);
-//	}
-
 	@Override
 	public void setCoverage(int[][] coverage) {
 		int x = (int) this.position().x();
@@ -421,5 +418,16 @@ public class LeftFlipper implements Bumper {
 	@Override
 	public String toString() {
 		return "LeftFlipper: " + name + " " + this.position();
+	}
+	
+	@Override 
+	public boolean equals(Object that) {
+		return that instanceof LeftFlipper && this.sameParts((LeftFlipper) that);
+	}
+
+	private boolean sameParts(LeftFlipper that) {
+		return this.x == that.x &&
+				this.y == that.y &&
+				this.orientation == that.orientation;
 	}
 }
