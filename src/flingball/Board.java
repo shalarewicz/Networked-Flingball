@@ -291,6 +291,16 @@ public class Board extends JPanel{
 	}
 	
 	/**
+	 * Removes a ball to the flingball board. 
+	 * 
+	 * @param ball ball to be removed. 
+	 */
+	public void removeBall(Ball ball) {
+		balls.remove(ball);
+		checkRep();
+	}
+	
+	/**
 	 * Adds a trigger and it's associated Action to the board. If the trigger is not the name of a 
 	 * Gadget currently on the board, no action is added. 
 	 * 
@@ -625,7 +635,7 @@ public class Board extends JPanel{
 			try {
 				Board otherBoard = this.getBoard(portals.get(portal).get(1));
 				Portal target = otherBoard.getPortal(portals.get(portal).get(0));
-				portal.connect(target);
+				portal.connect(target, otherBoard);
 			} catch (NoSuchElementException e) {
 				e.printStackTrace();
 			}	

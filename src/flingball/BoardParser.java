@@ -212,7 +212,7 @@ public class BoardParser {
         					if (portalProperties.size() > 4) {
         						otherBoard = portalProperties.get(3).text();
         					}
-        					Portal portal = new Portal(name, x, y);
+        					Portal portal = new Portal(name, x, y, board);
         					// TODO is this necessary? addPortal can just do it. 
         					// board.addGadget(portal);
         					board.addPortal(portal, target, otherBoard);

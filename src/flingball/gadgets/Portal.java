@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
 import flingball.Ball;
+import flingball.Board;
 import physics.Circle;
 import physics.Physics;
 import physics.Vect;
@@ -31,12 +32,14 @@ public class Portal implements Gadget {
 	 * 
 	 * Portals cannot have an action. 
 	 */
-	private final static Portal UNCONNECTED = new Portal("UNCONNECTED", -1, -1);
 	
 	private final int x, y;
 	private final String name;
 	private final Circle portal;
-	private Portal target = UNCONNECTED;
+	private final Board board;
+	private boolean connected = false;
+	private Portal target;
+	private Board targetBoard;
 	
 	private static final double RADIUS = 0.5;
 	private static final int HEIGHT = 1;
@@ -58,7 +61,9 @@ public class Portal implements Gadget {
 	
 	private void checkRep() {
 		assert this.portal.getRadius() == RADIUS : name + ": Portal radius != 1: " + this.portal.getRadius();
-		//assert this.target instanceof Portal : name + ": Portal is not connected to an object of type Portal";
+		if (this.connected) {
+			assert this.target instanceof Portal : name + ": Portal is not connected to an object of type Portal";
+		}
 	}
 	
 	/**
@@ -67,11 +72,12 @@ public class Portal implements Gadget {
 	 * @param x x coordinate of upper left corner of the bounding box of the portal
 	 * @param y y coordinate of upper left corner of the bounding box of the portal
 	 */
-	public Portal(String name, int x, int y) {
+	public Portal(String name, int x, int y, Board board) {
 		this.x = x;
 		this.y = -y;
 		this.name = name;
 		this.portal = new Circle(x + RADIUS, -y - RADIUS, RADIUS);
+		this.board = board;
 		this.checkRep();
 	}
 	
@@ -99,7 +105,7 @@ public class Portal implements Gadget {
 	public double collisionTime(Ball ball) {
 		double collisionTime = Double.POSITIVE_INFINITY;
 		// if the portal is unconnected or self connected then the ball passes over the portal unchanged
-		if (!(this.target.name.equals(this.name) && this.target.name.equals("UNCONNECTED"))) {
+		if (this.connected) {
 				collisionTime = ball.timeUntilCircleCollision(portal);
 		}
 		return collisionTime;
@@ -107,10 +113,12 @@ public class Portal implements Gadget {
 
 	@Override
 	public void reflectBall(Ball ball) {
-		if (!this.target.name.equals(this.name) && !this.target.name.equals("UNCONNECTED")) {
-			
-			ball.setCartesianPosition(new Vect(target.portal.getCenter().x(), 
-					target.portal.getCenter().y()));
+		if (this.connected) {
+			ball.setCartesianPosition(target.portal.getCenter());
+			if (!targetBoard.NAME.equals(this.board.NAME)) {
+				this.board.removeBall(ball);
+				this.targetBoard.addBall(ball);
+			}
 		}
 	}
 
@@ -131,7 +139,7 @@ public class Portal implements Gadget {
 	
 	@Override
 	public boolean ballOverlap(Ball ball) {
-		if (this.target.equals(UNCONNECTED)) {
+		if (!this.connected) {
 			return false;
 		}
 		double distance = Math.sqrt(Physics.distanceSquared(ball.getBoardCenter(), this.portal.getCenter()));
@@ -169,14 +177,17 @@ public class Portal implements Gadget {
 	 * same velocity and direction. 
 	 * @param that
 	 */
-	public void connect(Portal that) {
+	public void connect(Portal that, Board board) {
 		this.target = that;
+		this.targetBoard = board;
+		this.connected = true;
+		checkRep();
 	}
 	
 	@Override
 	public String toString() {
 		//TODO include target board?
-		return "{PORTAL: " + name + " " + this.position() + " connected to " + this.target.name + "}";
+		return "{PORTAL: " + name + " " + this.position() + " connected to " + this.target.name + " on " + this.targetBoard.NAME + "}";
 	}
 	
 	@Override
