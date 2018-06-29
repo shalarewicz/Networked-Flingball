@@ -17,25 +17,25 @@ import flingball.gadgets.*;
 
 public class BoardParser {
 
-	public static void main(final String[] args) throws IOException{
-		String test = "boards/sampleBoard.fb";
-		try {
-			Path filePath = Paths.get(test);
-			Stream<String> fileIn = Files.lines(filePath);
-			StringBuilder boardFile = new StringBuilder();
-			fileIn.forEach(s -> boardFile.append(s+"\n"));
-			fileIn.close();
-			System.out.println("Input: \n" + boardFile);
-			final Board board = BoardParser.parse(boardFile.toString());
-			System.out.println("The constructed board is " + board);
-			new BoardAnimation(board);
-		} catch (IOException e) {
-			System.out.println(test + " not found");
-		} catch (UnableToParseException e) {
-			System.out.println("Unable to parse " + test);
-		}
-			
-	}
+//	public static void main(final String[] args) throws IOException{
+//		String test = "boards/sampleBoard.fb";
+//		try {
+//			Path filePath = Paths.get(test);
+//			Stream<String> fileIn = Files.lines(filePath);
+//			StringBuilder boardFile = new StringBuilder();
+//			fileIn.forEach(s -> boardFile.append(s+"\n"));
+//			fileIn.close();
+//			System.out.println("Input: \n" + boardFile);
+//			final Board board = BoardParser.parse(boardFile.toString());
+//			System.out.println("The constructed board is " + board);
+//			new BoardAnimation(board);
+//		} catch (IOException e) {
+//			System.out.println(test + " not found");
+//		} catch (UnableToParseException e) {
+//			System.out.println("Unable to parse " + test);
+//		}
+//			
+//	}
 	
 	private enum BoardGrammar {
 		BOARD, COMMENT, COMMAND, BALL, BUMPER, SQUAREBUMPER, CIRCLEBUMPER, 
@@ -137,24 +137,14 @@ public class BoardParser {
             				}
             				case TRIANGLEBUMPER: // triangleBumper ::= 'triangleBumper name' '=' NAME 'x' '=' INTEGER 'y' '=' INTEGER ('orientation' '=' ORIENTATION)? '\n';
             				{
-            					Gadget bumper;
             					String name = bumperProperties.get(0).text();
             					final int x = Integer.parseInt(bumperProperties.get(1).text());
             					final int y = Integer.parseInt(bumperProperties.get(2).text());
+            					Orientation o = Orientation.ZERO;
             					if (bumperProperties.size() > 2) {
-            						Orientation o = Orientation.ZERO;
-            						switch (bumperProperties.get(bumperProperties.size()-1).text()) {
-            						case "0": o = Orientation.ZERO; break;
-            						case "90": o = Orientation.NINETY; break;
-            						case "180": o = Orientation.ONE_EIGHTY; break;
-            						case "270": o = Orientation.TWO_SEVENTY; break;
-            						}
-            						bumper = new TriangleBumper(name, x, y, o);
+            						o = parseOrientation(bumperProperties.get(bumperProperties.size()-1).text());
             					}
-            					else {            	        	
-            						bumper = new TriangleBumper(name, x, y, Orientation.ZERO);
-            					}
-            					board.addGadget(bumper);
+            					board.addGadget(new TriangleBumper(name, x, y, o));
             					continue;
             				}
             				default:
@@ -185,13 +175,7 @@ public class BoardParser {
             					int y = Integer.parseInt(flipperProperties.get(2).text());
             					Orientation o = Orientation.ZERO;
             					if (flipperProperties.size() > 3) {
-            						switch (flipperProperties.get(flipperProperties.size()-1).text()) {
-            						//	TODO Add a helper method to read these. This code repeats. 
-	            						case "0": o = Orientation.ZERO; break;
-	            						case "90": o = Orientation.NINETY; break;
-	            						case "180": o = Orientation.ONE_EIGHTY; break;
-	            						case "270": o = Orientation.TWO_SEVENTY; break;
-            						}
+            						o = parseOrientation(flipperProperties.get(flipperProperties.size()-1).text());
             					}
             					board.addGadget(new LeftFlipper(name, x, y, o));
             					continue;
@@ -204,13 +188,7 @@ public class BoardParser {
             					int y = Integer.parseInt(flipperProperties.get(2).text());
             					Orientation o = Orientation.ZERO;
             					if (flipperProperties.size() > 3) {
-            						switch (flipperProperties.get(flipperProperties.size()-1).text()) {
-            						//	TODO Add a helper method to read these. This code repeats. 
-	            						case "0": o = Orientation.ZERO; break;
-	            						case "90": o = Orientation.NINETY; break;
-	            						case "180": o = Orientation.ONE_EIGHTY; break;
-	            						case "270": o = Orientation.TWO_SEVENTY; break;
-            						}
+            						o = parseOrientation(flipperProperties.get(flipperProperties.size()-1).text());
             					}
             					board.addGadget(new RightFlipper(name, x, y, o));
             					continue;
@@ -333,6 +311,40 @@ public class BoardParser {
 		}
 	}
 
+	/**
+	 * Parses the provided string for an Orientation. Leading and trailing whitespace is ignored. 
+	 * 
+	 * "0" = ZERO
+	 * "90" = NINETY
+	 * "180" = ONE_EIGHTY
+	 * "270" =  TWO_SEVENTY
+	 * 
+	 * @param s string to be parsed
+	 * @return the Orientation specified by s or Orientation.ZERO if no match is found. 
+	 */
+	private static Orientation parseOrientation(String s) {
+		Orientation o = Orientation.ZERO;
+		switch (Integer.parseInt(s.trim())) {
+		//	TODO Add a helper method to read these. This code repeats. 
+			case 0: {
+				o = Orientation.ZERO; 
+					break;
+				}
+			case 90: {
+					o = Orientation.NINETY; 
+					break;
+				}
+			case 180: {
+				o = Orientation.ONE_EIGHTY; 
+				break;
+			}
+			case 270: {
+				o = Orientation.TWO_SEVENTY; 
+				break;
+			}
+		}
+		return o;
+	}
 
 
 }

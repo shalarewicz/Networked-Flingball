@@ -123,7 +123,7 @@ public class LeftFlipper implements Bumper {
 		assert Math.abs(portPivot.distanceSquared(portTail) - starPivot.distanceSquared(starTail)) < 0.001 : name + ": Port and Starboard different length";
 		
 		// Check distance between the centers of pivot and tail must be equal to the length of port/starboard
-		assert Math.abs(portPivot.distanceSquared(portTail) - pivotCenter.distanceSquared(tailCenter)) < 0.001 ;
+		assert Math.abs(portPivot.distanceSquared(portTail) - pivotCenter.distanceSquared(tailCenter)) < 0.001 : name + ": Length of wall greather than distance between centers";
 		
 	}
 	
@@ -151,15 +151,15 @@ public class LeftFlipper implements Bumper {
 		case NINETY: {
 			this.pivot = new Circle(x + WIDTH - RADIUS, -y - RADIUS, RADIUS);
 			this.tail = new Circle(x + RADIUS, -y - RADIUS, RADIUS);
-			this.port = new Wall(name + ": port", x + RADIUS, -y - 2*RADIUS, x + WIDTH - RADIUS, -y - 2*RADIUS);
-			this.starboard = new Wall(name + ": starboard", x + RADIUS, (double) -y, x + WIDTH - RADIUS, (double) -y);
+			this.port = new Wall(name + ": port", x + WIDTH - RADIUS, (double) -y, x + RADIUS, (double) -y);
+			this.starboard = new Wall(name + ": starboard", x + WIDTH - RADIUS, -y - 2*RADIUS, x + RADIUS, -y - 2*RADIUS);
 			break;
 		}
 		case ONE_EIGHTY: {
 			this.pivot = new Circle(x + WIDTH - RADIUS, -y - HEIGHT + RADIUS, RADIUS);
 			this.tail = new Circle(x + WIDTH - RADIUS, -y - RADIUS, RADIUS);
-			this.port = new Wall(name + ": port", x + WIDTH, -y - RADIUS, x + WIDTH, -y - HEIGHT + RADIUS);
-			this.starboard = new Wall(name + ": starboard", x + WIDTH - 2*RADIUS, -y - RADIUS, x + WIDTH - 2*RADIUS, -y -2 + RADIUS);
+			this.port = new Wall(name + ": port", x + WIDTH, -y - HEIGHT + RADIUS, x + WIDTH, -y - RADIUS);
+			this.starboard = new Wall(name + ": starboard", x + WIDTH - 2*RADIUS, -y - HEIGHT + RADIUS, x + WIDTH - 2*RADIUS, -y - RADIUS);
 			
 			break;
 		}
@@ -229,16 +229,19 @@ public class LeftFlipper implements Bumper {
 	public double collisionTime(Ball ball) {
 		double collisionTime = ball.timeUntilCircleCollision(this.pivot);
 		if (this.rotating && !this.rotated) {
+			//Clockwise rotation from default orientation to rotated orientation
 			collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), this.angularVelocity), collisionTime);
 			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity), collisionTime);
 			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity),collisionTime);
 			
 		} else if (this.rotating) {
+			//Counterclockwise rotation from rotated orientation to starting orientation
 			collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), -angularVelocity), collisionTime);
 			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), -angularVelocity), collisionTime);
 			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), -angularVelocity),collisionTime);
 			
 		} else {
+			//No rotation
 			collisionTime = Math.min(ball.timeUntilCircleCollision(tail), collisionTime);
 			collisionTime =  Math.min(this.port.collisionTime(ball), collisionTime);
 			collisionTime = Math.min(this.starboard.collisionTime(ball), collisionTime);
@@ -256,19 +259,19 @@ public class LeftFlipper implements Bumper {
 		
 		// TODO Should probably go with whatever wall has the smallest collision time. 
 		if (this.rotating && !this.rotated) {
-			// Flipper is rotating in the counterclockwise direction from its starting position to its rotated position
-			if (collisionTime == ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), angularVelocity)) {
-				ball.reflectRotatingCircle(this.tail, this.pivot.getCenter(), angularVelocity, this.reflectionCoeff);
-			} else if (collisionTime == this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), this.angularVelocity)) {
+			//Counterclockwise rotation from default orientation to rotated orientation
+			if (collisionTime == ball.timeUntilRoatatingCircleCollision(tail, pivot.getCenter(), angularVelocity)) {
+				ball.reflectRotatingCircle(this.tail, this.pivot.getCenter(), angularVelocity, reflectionCoeff);
+			} else if (collisionTime == this.port.timeUntilRotatingWallCollision(ball, pivot.getCenter(), angularVelocity)) {
 				this.port.reflectBallRotating(ball, this.pivot.getCenter(), angularVelocity, reflectionCoeff);
-			} else if (collisionTime == this.starboard.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), this.angularVelocity)) {
+			} else if (collisionTime == this.starboard.timeUntilRotatingWallCollision(ball, pivot.getCenter(), angularVelocity)) {
 				this.starboard.reflectBallRotating(ball, this.pivot.getCenter(), angularVelocity, reflectionCoeff);
 			} else {
 				throw new RuntimeException("Rotating LeftFlipper counterclockwise reflection should never get here");
 			}
 			
 		} else if (this.rotating) {
-			// Flipper is rotating in the clockwise direction from its rotated position back to its starting position
+			//Clockwise rotation from default orientation to rotated orientation
 			if (collisionTime == ball.timeUntilRoatatingCircleCollision(tail, pivot.getCenter(), -angularVelocity)) {
 				ball.reflectRotatingCircle(tail, pivot.getCenter(), -angularVelocity, reflectionCoeff);
 			} else if (collisionTime == port.timeUntilRotatingWallCollision(ball, pivot.getCenter(), -angularVelocity)) {
@@ -329,6 +332,7 @@ public class LeftFlipper implements Bumper {
 						this.starboard = finalStarboard;
 						this.rotated = !this.rotated;
 						this.rotating = false;
+						//TODO reset degrees rotated to zero?
 						break;
 					} else {
 						this.rotate(degreeIncrement);

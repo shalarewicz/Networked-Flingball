@@ -1,11 +1,15 @@
 package flingball.gadgets;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
 import flingball.Ball;
+import flingball.BoardAnimation;
 import flingball.Orientation;
 import physics.Angle;
 import physics.Circle;
+import physics.Physics;
 import physics.Vect;
 
 public class RightFlipper implements Bumper {
@@ -34,13 +38,16 @@ public class RightFlipper implements Bumper {
 	
 	private final int x, y;
 	private final String name;
-	private final String trigger = NO_TRIGGER; //TODO Why is this final?
+	private final Orientation orientation;
+	private String trigger = NO_TRIGGER; 
 	private double reflectionCoeff = DEFAULT_FLIPPER_REFLECTION_COEFF;
-	private  Circle pivot, tail;
-	private  Wall port, starboard;
+	private Circle pivot, tail;
+	private Wall port, starboard;
+	
+	
 	private final int angularVelocity = 1080;
-	private Orientation orientation = Orientation.ZERO;
-	private boolean rotating = true;
+	private boolean rotating = false;
+	private boolean rotated = false;
 	private Angle degreesRotated = Angle.ZERO;
 	
 	private final static double RADIUS = 0.25;
@@ -84,38 +91,35 @@ public class RightFlipper implements Bumper {
 		 * 4. As port/starboard are parallel of equal length, tangential to pivot tail and separated by 2*radius
 		 *    then the line connecting the endpoints muct bisect the center of pivot/tail respectively. 
 		 */
+		
 		// Check port and starboard are parallel (equal slopes)
 		final double slopePort = slope(port);
 		final double slopeStar = slope(starboard);
-		assert slopePort == slopeStar : "Walls of RightFlipper " + name + " are not parallel";
+		assert slopePort == slopeStar || (Double.isNaN(slopePort) && Double.isNaN(slopeStar)): 
+			"Walls of RightFlipper " + name + " are not parallel";
 		
 		final Vect portPivot = port.start();
 		final Vect portTail = port.end();
-		final Vect starPivot = port.start();
-		final Vect starTail = port.end();
+		final Vect starPivot = starboard.start();
+		final Vect starTail = starboard.end();
 		final double pivotRadius = pivot.getRadius();
 		final double tailRadius = tail.getRadius();
 		final Vect pivotCenter = pivot.getCenter();
 		final Vect tailCenter = tail.getCenter();
 		
-		// Check if port and starboard are tangential (distance from endpoints to center of circles equals radius)
-		assert Math.sqrt(portPivot.distanceSquared(pivotCenter)) == pivotRadius : name + ": Port flipper wall bisects pivot";
-		assert Math.sqrt(portTail.distanceSquared(tailCenter)) == tailRadius : name + ": Port flipper wall bisects tail";
-		//TODO Because port/starboard are parallel this second check is unnecessary??
-		assert Math.sqrt(starPivot.distanceSquared(pivotCenter)) == pivotRadius : name + ": Starboard flipper wall bisects pivot";
-		assert Math.sqrt(starPivot.distanceSquared(tailCenter)) == tailRadius : name + ": Starboard flipper wall bisects tail";
+		assert pivotRadius == tailRadius && pivotRadius == RADIUS : name + ": Pivot/Tail radius != RADIUS";
 		
-		// Check pivot and tail same size
-		assert pivotRadius == tailRadius : name + ": Pivot and Tail different sizes";
+		// Error tolerance of 0.001 is allowed to prevent floating point math errors
+		// Check if port and starboard are tangential (distance from endpoints to center of circles equals radius)
+		// Because lines are parallel only need to check and end point of each line. 
+		assert Math.abs(Math.sqrt(portPivot.distanceSquared(pivotCenter)) - pivotRadius) < 0.001 : name + ": Port flipper wall bisects pivot";
+		assert Math.abs(Math.sqrt(starPivot.distanceSquared(pivotCenter)) - pivotRadius) < 0.001 : name + ": Starboard flipper wall bisects pivot";
 		
 		// Check port and starboard same length
-		assert portPivot.distanceSquared(portTail) == starPivot.distanceSquared(starTail) : name + ": Port and Starboard different length";
-		
-		// Check that distance between the lines is equal to the diameter of pivot/tail. 
-		assert Math.sqrt(portPivot.distanceSquared(starPivot)) == pivotRadius * 2;
+		assert Math.abs(portPivot.distanceSquared(portTail) - starPivot.distanceSquared(starTail)) < 0.001 : name + ": Port and Starboard different length";
 		
 		// Check distance between the centers of pivot and tail must be equal to the length of port/starboard
-		assert portPivot.distanceSquared(portTail) == pivotCenter.distanceSquared(tailCenter);
+		assert Math.abs(portPivot.distanceSquared(portTail) - pivotCenter.distanceSquared(tailCenter)) < 0.001 : name + ": Length of wall greather than distance between centers";
 		
 	}
 	
@@ -138,16 +142,16 @@ public class RightFlipper implements Bumper {
 		case NINETY: {
 			this.tail = new Circle(x + RADIUS, -y - HEIGHT + RADIUS, RADIUS);
 			this.pivot = new Circle(x + WIDTH - RADIUS, -y - HEIGHT + RADIUS, RADIUS);
-			this.starboard = new Wall(name + ": port", x + RADIUS, -y - HEIGHT, x + WIDTH - RADIUS, -y - HEIGHT);
-			this.port = new Wall(name + ": starboard", x + RADIUS, -y - HEIGHT + 2*RADIUS, x + WIDTH - RADIUS, -y - HEIGHT + 2*RADIUS);
+			this.starboard = new Wall(name + ": port", x + WIDTH - RADIUS, -y - HEIGHT, x + RADIUS, -y - HEIGHT);
+			this.port = new Wall(name + ": starboard", x + WIDTH - RADIUS, -y - HEIGHT + 2*RADIUS, x + RADIUS, -y - HEIGHT + 2*RADIUS);
 			
 			break;
 		}
 		case ONE_EIGHTY: {
 			this.tail = new Circle(x + RADIUS, -y - RADIUS, RADIUS);
 			this.pivot = new Circle(x + RADIUS, -y - HEIGHT + RADIUS, RADIUS);
-			this.starboard = new Wall(name + ":port", (double) x, -y -RADIUS, (double) x, -y - HEIGHT + RADIUS);
-			this.port = new Wall(name + ":starboard", x + 2*RADIUS, -y -RADIUS, x + 2 * RADIUS, -y - HEIGHT + RADIUS);
+			this.starboard = new Wall(name + ":port", (double) x, -y - HEIGHT + RADIUS, (double) x, -y - RADIUS);
+			this.port = new Wall(name + ":starboard", x + 2*RADIUS, -y - HEIGHT + RADIUS, x + 2 * RADIUS, -y - RADIUS);
 			break;
 		}
 		case TWO_SEVENTY: {
@@ -159,9 +163,11 @@ public class RightFlipper implements Bumper {
 		}
 		default: {
 			
-			throw new RuntimeException("Should never get here. Invalid LeftFlipper Orientation");
+			throw new RuntimeException("Should never get here. Invalid RightFlipper Orientation");
 		}
+		
 		}
+		checkRep();
 		
 	}
 	
@@ -181,7 +187,7 @@ public class RightFlipper implements Bumper {
 	
 	@Override
 	public Vect position() {
-		return new Vect(x, y);
+		return new Vect(this.x, -this.y);
 	}
 
 	@Override
@@ -191,14 +197,12 @@ public class RightFlipper implements Bumper {
 
 	@Override
 	public int height() {
-		// TODO Auto-generated method stub
-		return 0;
+		return HEIGHT;
 	}
 
 	@Override
 	public int width() {
-		// TODO Auto-generated method stub
-		return 0;
+		return WIDTH;
 	}
 
 	@Override
@@ -214,44 +218,212 @@ public class RightFlipper implements Bumper {
 
 	@Override
 	public double collisionTime(Ball ball) {
-		// TODO Auto-generated method stub
-		return 0;
+		double collisionTime = ball.timeUntilCircleCollision(this.pivot);
+		if (this.rotating && !this.rotated) {
+			//Clockwise rotation from default orientation to rotated orientation
+			collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), -angularVelocity), collisionTime);
+			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), -angularVelocity), collisionTime);
+			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), -angularVelocity),collisionTime);
+			
+		} else if (this.rotating) {
+			//Clockwise rotation from default orientation to rotated orientation
+			collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), angularVelocity), collisionTime);
+			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity), collisionTime);
+			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity),collisionTime);
+			
+		} else {
+			//No rotation
+			collisionTime = Math.min(ball.timeUntilCircleCollision(tail), collisionTime);
+			collisionTime =  Math.min(this.port.collisionTime(ball), collisionTime);
+			collisionTime = Math.min(this.starboard.collisionTime(ball), collisionTime);
+		}
+		return collisionTime;
 	}
 
 	@Override
 	public void reflectBall(Ball ball) {
-		// TODO Auto-generated method stub
+		double collisionTime = this.collisionTime(ball);
+		if (collisionTime == ball.timeUntilCircleCollision(this.pivot)) {
+			ball.reflectCircle(this.pivot);
+			return;
+		}
+		
+		// TODO Should probably go with whatever wall has the smallest collision time. 
+		if (this.rotating && !this.rotated) {
+			//Clockwise rotation from default orientation to rotated orientation
+			if (collisionTime == ball.timeUntilRoatatingCircleCollision(tail, pivot.getCenter(), -angularVelocity)) {
+				ball.reflectRotatingCircle(tail, pivot.getCenter(), -angularVelocity, reflectionCoeff);
+			} else if (collisionTime == port.timeUntilRotatingWallCollision(ball, pivot.getCenter(), -angularVelocity)) {
+				this.port.reflectBallRotating(ball, pivot.getCenter(), -angularVelocity, reflectionCoeff);
+			} else if (collisionTime == starboard.timeUntilRotatingWallCollision(ball, pivot.getCenter(), -angularVelocity)) {
+				this.starboard.reflectBallRotating(ball, pivot.getCenter(), -angularVelocity, reflectionCoeff);
+			} else {
+				throw new RuntimeException("Rotating RightFlipper counterclockwise reflection should never get here");
+			}
+			
+		} else if (this.rotating) {
+			//Counterclockwise rotation from default orientation to rotated orientation
+			if (collisionTime == ball.timeUntilRoatatingCircleCollision(tail, pivot.getCenter(), angularVelocity)) {
+				ball.reflectRotatingCircle(tail, pivot.getCenter(), angularVelocity, reflectionCoeff);
+			} else if (collisionTime == port.timeUntilRotatingWallCollision(ball, pivot.getCenter(), angularVelocity)) {
+				this.port.reflectBallRotating(ball, pivot.getCenter(), angularVelocity, reflectionCoeff);
+			} else if (collisionTime == starboard.timeUntilRotatingWallCollision(ball, pivot.getCenter(), angularVelocity)) {
+				this.starboard.reflectBallRotating(ball, pivot.getCenter(), angularVelocity, reflectionCoeff);
+			} else {
+				throw new RuntimeException("Rotating RightFlipper clockwise reflection should never get here");
+			}
+		}
+		else {
+			// Flipper is not rotating
+			if (collisionTime == ball.timeUntilCircleCollision(tail)) {
+				ball.reflectCircle(tail);
+			} else if (collisionTime == port.collisionTime(ball)){
+				this.port.reflectBall(ball);
+			} else if (collisionTime == starboard.collisionTime(ball)){
+				this.starboard.reflectBall(ball);
+			} else {
+				throw new RuntimeException("RightFlipper " + name + " reflection should never get here");
+			}
+			
+		}
 
 	}
-
+	
 	@Override
 	public String getTrigger() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.trigger;
 	}
-
+	
+	@Override
+	public void setTrigger(String trigger) {
+		this.trigger = trigger;
+	}
 	@Override
 	public void takeAction() {
-		// TODO Auto-generated method stub
-
+		if (this.rotating) return; 
+		new Thread(() ->  {
+			if (!this.rotating) {
+				this.rotating = true;
+				Angle degreeIncrement = new Angle(Math.PI / 180 * this.angularVelocity * BoardAnimation.FRAME_RATE / 1000); 
+				Angle totalRotationAngle = Angle.DEG_90;
+				
+				if (!this.rotated) {
+					totalRotationAngle = Angle.DEG_270;
+					degreeIncrement = Angle.RAD_PI.plus(Angle.RAD_PI).minus(degreeIncrement);
+				}
+				final Circle finalTail = Physics.rotateAround(this.tail, this.pivot.getCenter(), totalRotationAngle);
+				final Wall finalPort = this.port.rotateAround(this.pivot.getCenter(), totalRotationAngle);
+				final Wall finalStarboard = this.starboard.rotateAround(this.pivot.getCenter(), totalRotationAngle);
+				
+				while (true) {
+					if (degreesRotated.plus(degreeIncrement).compareTo(Angle.RAD_PI_OVER_TWO) >= 0) {
+						this.tail = finalTail;
+						this.port = finalPort;
+						this.starboard = finalStarboard;
+						this.rotated = !this.rotated;
+						this.rotating = false;
+						//TODO reset degrees rotated to zero?
+						break;
+					} else {
+						this.rotate(degreeIncrement);
+					}
+					try {
+						Thread.sleep(BoardAnimation.FRAME_RATE);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			
+		}).start();
 	}
+	
+	/**
+	 * Rotates at a constant angular velocity of 1080 degrees per second to a position 90 degrees away from its starting position 
+	 * in alternating counterclockwise and clockwise directions. 
+	 * @param angle by which the flipper is rotated
+	 */
+	private void rotate(Angle angle) {
+			// Rotate counterclockwise
+			this.tail = Physics.rotateAround(this.tail, this.pivot.getCenter(), angle);
+			this.port = port.rotateAround(this.pivot.getCenter(), angle);
+			this.starboard = starboard.rotateAround(this.pivot.getCenter(), angle);
+			this.degreesRotated = this.degreesRotated.plus(angle);
+			checkRep();
+			
+	}
+
+	
 
 	@Override
 	public boolean ballOverlap(Ball ball) {
-		// TODO Auto-generated method stub
-		return false;
+		return Physics.distanceSquared(ball.getCartesianCenter(), this.tail.getCenter()) >= ball.getRadius() &&
+			   Physics.distanceSquared(ball.getCartesianCenter(), this.pivot.getCenter()) >= ball.getRadius();
 	}
 
 	@Override
 	public BufferedImage generate(int L) {
-		// TODO Auto-generated method stub
-		return null;
+		BufferedImage output = new BufferedImage(2 * L, 2 * L, BufferedImage.TYPE_4BYTE_ABGR);
+        Graphics2D graphics = (Graphics2D) output.getGraphics();
+        
+        graphics.setColor(Color.ORANGE);
+        
+        
+        // Use anchors to shift positions so an image can be drawn on a 2 x 2 grid
+        final int xAnchor = this.x;
+        final int yAnchor = -this.y;
+        
+        int xpivot = (int) ((this.pivot.getCenter().x() - xAnchor - RADIUS) * L);
+        int ypivot = (int) ((-this.pivot.getCenter().y() - yAnchor- RADIUS) * L);
+        graphics.fillArc(xpivot, ypivot, (int) (RADIUS * 2 * L), (int) (RADIUS * 2 * L), 0, 360);
+        
+        int xtail = (int) ((this.tail.getCenter().x() - xAnchor - RADIUS) * L);
+        int ytail = (int) ((-this.tail.getCenter().y() - yAnchor - RADIUS) * L);
+        graphics.fillArc(xtail, ytail, (int) (RADIUS * 2 * L), (int) (RADIUS * 2 * L), 0, 360);
+        
+        final int[] xPoints = {
+        		(int) ((this.port.start().x() - xAnchor) * L), 
+        		(int) ((this.port.end().x() - xAnchor) * L),
+        		(int) ((this.starboard.end().x() - xAnchor) * L), 
+        		(int) ((this.starboard.start().x() - xAnchor) * L) 
+        		};
+        final int[] yPoints = {
+        		(int) ((-this.port.start().y() - yAnchor) * L), 
+        		(int) ((-this.port.end().y() - yAnchor) * L),
+        		(int) ((-this.starboard.end().y() - yAnchor) * L), 
+        		(int) ((-this.starboard.start().y() - yAnchor) * L)
+        		};
+        graphics.fillPolygon(xPoints, yPoints, 4);
+        return output;
 	}
 
 	@Override
 	public void setCoverage(int[][] coverage) {
-		// TODO Auto-generated method stub
+		int x = (int) this.position().x();
+		int y = (int) this.position().y();
+		coverage[y][x] = 1;
+		for (int i = x; x < x + WIDTH; i++) {
+			for (int j = y; j < y + HEIGHT; j++) {
+				assert coverage[j][i] != 1 : name + ": RightFlipper coverage overlap";
+				coverage[j][i] = 1;
+			}
+		}
+	}
 
+	@Override
+	public String toString() {
+		return "RightFlipper: " + name + " " + this.position();
+	}
+	
+	@Override 
+	public boolean equals(Object that) {
+		return that instanceof RightFlipper && this.sameParts((RightFlipper) that);
+	}
+
+	private boolean sameParts(RightFlipper that) {
+		return this.x == that.x &&
+				this.y == that.y &&
+				this.orientation == that.orientation;
 	}
 
 }
