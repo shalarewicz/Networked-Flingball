@@ -20,8 +20,7 @@ import physics.Vect;
 
 public class BoardAnimation {
 	
-	private final long FRAME_RATE = 5; //TODO 5
-	private final double PLAY_RATE = 0.005; //TODO 0.005
+	public final static long FRAME_RATE = 5; 
 	/*
 	 * TODO: AF()
 	 * TODO: Rep Invariant
@@ -78,7 +77,7 @@ public class BoardAnimation {
 	            TimerTask play = new TimerTask() {
 	                @Override
 	                public void run() {
-	                    board.play(PLAY_RATE);
+	                    board.play((double) FRAME_RATE / 1000);
 	                    repaint();
 	                }
 	            };
