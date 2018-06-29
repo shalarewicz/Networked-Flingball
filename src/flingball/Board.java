@@ -541,7 +541,6 @@ public class Board extends JPanel{
 		final Gadget NO_COLLISION = new Wall("NO_COLLISION", 0, 0, 0, 0);
 		double collisionTime = Double.POSITIVE_INFINITY;
 		Gadget nextGadget = NO_COLLISION;
-		
 		// Find the gadget with which the ball will collide next
 		for (Gadget gadget : this.gadgets) {
 			if (gadget.collisionTime(ball) < collisionTime) {
@@ -628,7 +627,7 @@ public class Board extends JPanel{
 				Portal target = otherBoard.getPortal(portals.get(portal).get(0));
 				portal.connect(target);
 			} catch (NoSuchElementException e) {
-				// Do nothing
+				e.printStackTrace();
 			}	
 		}
 	}
@@ -645,7 +644,7 @@ public class Board extends JPanel{
 				return g;
 			}
 		}
-		throw new NoSuchElementException(name + "gadget not found");
+		throw new NoSuchElementException(name + " gadget not found");
 	}
 	
 	/**
@@ -660,16 +659,19 @@ public class Board extends JPanel{
 				return p;
 			}
 		}
-		throw new NoSuchElementException(name + "portal not found");
+		throw new NoSuchElementException(name + " portal not found");
 	}
 	
 	private Board getBoard(String name) {
+		if (name.equals(this.NAME)) {
+			return this;
+		}
 		for (Board b : neighbors.keySet()) {
 			if (name.equals(b.NAME)) {
 				return b;
 			}
 		}
-		throw new NoSuchElementException(name + "board not found");
+		throw new NoSuchElementException(name + " board not found");
 	}
 	
 	

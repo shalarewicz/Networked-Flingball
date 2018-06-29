@@ -203,13 +203,11 @@ public class BoardParser {
             			
             			case PORTAL: // PORTAL ::= 'portal' 'name' '=' NAME 'x' '=' INTEGER 'y' '=' INTEGER ('otherBoard' '=' NAME)? 'otherPortal' '=' NAME '\n';
             			{
-            				ParseTree<BoardGrammar> greatGrandChild = greatGrandChildren.get(0);
-            				List<ParseTree<BoardGrammar>> portalProperties = greatGrandChild.children();
-            				
+            				List<ParseTree<BoardGrammar>> portalProperties = grandChild.children();
             				String name = portalProperties.get(0).text();
         					int x = Integer.parseInt(portalProperties.get(1).text());
         					int y = Integer.parseInt(portalProperties.get(2).text());
-        					String otherBoard = "";
+        					String otherBoard = board.NAME;
         					String target = portalProperties.get(portalProperties.size() - 1).text();
         					if (portalProperties.size() > 4) {
         						otherBoard = portalProperties.get(3).text();
