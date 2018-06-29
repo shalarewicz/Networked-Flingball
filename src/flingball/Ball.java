@@ -371,7 +371,6 @@ public class Ball {
 	public void reflectRotatingLine(LineSegment line, Vect pivot, double angularVelocity, double reflectionCoeff) {
 		this.cartesianVelocity = Physics.reflectRotatingWall(line, pivot, angularVelocity,
 					new Circle(this.cartesianCenter, this.radius), this.cartesianVelocity, reflectionCoeff);
-		this.boardVelocity = convertVelocity(this.cartesianVelocity);
 		if (this.cartesianVelocity.length() > 200) {
 			this.cartesianVelocity = new Vect(this.cartesianVelocity.angle(), 190);
 		}
