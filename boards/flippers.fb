@@ -9,13 +9,13 @@ ball name=BallE x=19.25 y=3.25 xVelocity=0 yVelocity=0
 
 # define some left flippers
 leftFlipper name=FlipA x=0 y=8 orientation=0 
-leftFlipper name=FlipB x=4 y=10 orientation=0 
 leftFlipper name=FlipC x=9 y=8 orientation=0
 leftFlipper name=FlipD x=15 y=8 orientation=0
 
 # define some right flippers 
-leftFlipper name=FlipE x=2 y=15 orientation=0
-leftFlipper name=FlipF x=17 y=15 orientation=0
+rightFlipper name=FlipB x=4 y=10 orientation=0 
+rightFlipper name=FlipE x=2 y=15 orientation=0
+rightFlipper name=FlipF x=17 y=15 orientation=0
 
 # define some circle bumpers
 squareBumper name=CircleA x=5 y=18
@@ -40,5 +40,6 @@ fire trigger=CircleF action=FlipD
 fire trigger=Abs action=FlipE
 fire trigger=Abs action=FlipF
 fire trigger=Abs action=Abs
+keydown key = space action = FlipB
 
 
