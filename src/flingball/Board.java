@@ -272,6 +272,7 @@ public class Board extends JPanel{
 	 */
 	public void addGadget(Gadget gadget) {
 		//TODO Make Gadgets a set and assert addition to the set?
+		// This depends on how equality works
 		this.gadgets.add(gadget);
 		this.setCoverage(gadget);
 		checkRep();	
@@ -297,11 +298,11 @@ public class Board extends JPanel{
 	 * @param action action to be taken when the trigger is triggered. 
 	 */
 	private void addAction(String trigger, Action action) {
-		Gadget gTrigger = getGadget(trigger);
-		if (!boardTriggers.containsKey(gTrigger)) {
-			boardTriggers.put(gTrigger, new ArrayList<Action>());
+		Gadget triggerGadget = getGadget(trigger);
+		if (!boardTriggers.containsKey(triggerGadget)) {
+			boardTriggers.put(triggerGadget, new ArrayList<Action>());
 		}
-		boardTriggers.get(gTrigger).add(action);
+		boardTriggers.get(triggerGadget).add(action);
 	}
 	
 	/**
@@ -312,11 +313,13 @@ public class Board extends JPanel{
 	 * @param action name of the Gadget whose action will be triggered 
 	 */
 	private void addAction(String trigger, String action) {
-		Gadget gTrigger = getGadget(trigger);
-		if (!triggers.containsKey(gTrigger)) {
-			triggers.put(gTrigger, new ArrayList<Gadget>());
+		Gadget triggerGadget = getGadget(trigger);
+		Gadget actionGadget = getGadget(trigger);
+		actionGadget.setTrigger(trigger);
+		if (!triggers.containsKey(triggerGadget)) {
+			triggers.put(triggerGadget, new ArrayList<Gadget>());
 		}
-		triggers.get(gTrigger).add(getGadget(action));
+		triggers.get(triggerGadget).add(getGadget(action));
 	}
 	
 	/**
@@ -326,17 +329,20 @@ public class Board extends JPanel{
 	 * @param up - true if the action should be taken when the key is released. false if it should be taken when the key is pressed
 	 */
 	private void addKeyAction(String keyName, String action, boolean up) {
+		Gadget actionGadget = getGadget(action);
+		actionGadget.setTrigger(keyName);
 		
 		if (up) {
 			if (!keyUpTriggers.containsKey(keyName)) {
 				keyUpTriggers.put(keyName, new ArrayList<Gadget>());
 			}
-			keyUpTriggers.get(keyName).add(getGadget(action));
+			keyUpTriggers.get(keyName).add(actionGadget);
 		} else {
 			if (!keyDownTriggers.containsKey(keyName)) {
 				keyDownTriggers.put(keyName, new ArrayList<Gadget>());
 			}
-			keyDownTriggers.get(keyName).add(getGadget(action));
+			keyDownTriggers.get(keyName).add(actionGadget);
+			
 		}
 	}
 	

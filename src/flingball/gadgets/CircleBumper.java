@@ -110,6 +110,11 @@ public class CircleBumper implements Bumper {
 	public String getTrigger() {
 		return this.trigger;
 	}
+	
+	@Override
+	public void setTrigger(String trigger) {
+		this.trigger = trigger;
+	}
 
 	@Override
 	public BufferedImage generate(int L) {

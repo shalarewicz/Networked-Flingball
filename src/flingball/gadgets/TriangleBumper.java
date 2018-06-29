@@ -11,11 +11,9 @@ import java.awt.Polygon;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Area;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -191,6 +189,11 @@ public class TriangleBumper implements Bumper {
 	@Override
 	public String getTrigger() {
 		return this.trigger;
+	}
+	
+	@Override
+	public void setTrigger(String trigger) {
+		this.trigger = trigger;
 	}
 
 	@Override

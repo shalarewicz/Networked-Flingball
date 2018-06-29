@@ -156,6 +156,11 @@ public class Absorber implements Gadget {
 	public String getTrigger() {
 		return this.trigger;
 	}
+	
+	@Override
+	public void setTrigger(String trigger) {
+		this.trigger = trigger;
+	}
 
 	@Override
 	public void takeAction() {

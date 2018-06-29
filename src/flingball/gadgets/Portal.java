@@ -118,6 +118,11 @@ public class Portal implements Gadget {
 	public String getTrigger() {
 		return Gadget.NO_TRIGGER;
 	}
+	
+	@Override
+	public void setTrigger(String trigger) {
+		// Do nothing
+	}
 
 	@Override
 	public void takeAction() {

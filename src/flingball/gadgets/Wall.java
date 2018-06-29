@@ -134,6 +134,11 @@ public class Wall implements Gadget {
 	public String getTrigger() {
 		return Gadget.NO_TRIGGER;
 	}
+	
+	@Override
+	public void setTrigger(String trigger) {
+		// Do Nothing
+	}
 
 	@Override
 	public BufferedImage generate(int L) {

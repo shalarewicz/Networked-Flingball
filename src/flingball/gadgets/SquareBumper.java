@@ -7,11 +7,9 @@ package flingball.gadgets;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -34,7 +32,7 @@ public class SquareBumper implements Bumper {
 	private final int HEIGHT = 1;
 	
 	private double reflectionCoeff = Gadget.DEFAULT_REFLECTION_COEFF;
-	private final String trigger = Gadget.NO_TRIGGER;
+	private String trigger = Gadget.NO_TRIGGER;
 	
 	
 	
@@ -165,6 +163,11 @@ public class SquareBumper implements Bumper {
 	@Override
 	public String getTrigger() {
 		return this.trigger;
+	}
+	
+	@Override
+	public void setTrigger(String trigger) {
+		this.trigger = trigger;
 	}
 
 	@Override

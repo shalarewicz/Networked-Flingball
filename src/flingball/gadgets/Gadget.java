@@ -58,10 +58,18 @@ public interface Gadget {
 	public void reflectBall(Ball ball);
 	
 	/**
+	 * Get the trigger for a Gadget. 
 	 * 
-	 * @return the name of the gadget which is the trigger for this gadget
+	 * @return the name of the gadget or key which is the trigger for this gadget
 	 */
 	public String getTrigger();
+	
+	/**
+	 * Set the trigger for a gadget. 
+	 * 
+	 * @param trigger name of the gadget or key which will trigger this gadget's action
+	 */
+	public void setTrigger(String trigger);
 	
 	/**
 	 * If the gadget has an action associated with it, the action is taken. The board is updated with any side efffects. 
