@@ -1,0 +1,9 @@
+board name=Flippers gravity = 25.0
+
+#define some portals
+
+portal name = PortalA x = 10 y = 0 otherPortal = PortalB
+portal name = PortalB x = 10 y = 19 otherPortal = PortalA
+#circleBumper name = circle x = 10 y = 19
+
+ball name = BallA x = 10.5 y = 10 xVelocity = 50 yVelocity = 0

@@ -6,6 +6,8 @@ import java.awt.image.BufferedImage;
 
 import flingball.Ball;
 import flingball.Board;
+import flingball.Board.BallListener;
+import flingball.BoardAnimation;
 import physics.Circle;
 import physics.Physics;
 import physics.Vect;
@@ -117,7 +119,8 @@ public class Portal implements Gadget {
 			ball.setCartesianPosition(target.portal.getCenter());
 			if (!targetBoard.NAME.equals(this.board.NAME)) {
 				this.board.removeBall(ball);
-				this.targetBoard.addBall(ball);
+				BallListener listener = this.targetBoard.addBall(ball);
+				listener.onStart(BoardAnimation.FRAME_RATE / 1000);
 			}
 		}
 	}

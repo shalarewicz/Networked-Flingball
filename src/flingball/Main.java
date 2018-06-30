@@ -7,12 +7,13 @@ import java.nio.file.Paths;
 import java.util.stream.Stream;
 
 import edu.mit.eecs.parserlib.UnableToParseException;
+import flingball.Board.Border;
 
 public class Main {
 	public static void main(final String[] args) throws IOException{
 //		String file = args[0];
 //		String file = "boards/simple_board.fb";
-		String file = "boards/portals.fb";
+		String file = "boards/neighbors.fb";
 		try {
 			Path filePath = Paths.get(file);
 			Stream<String> fileIn = Files.lines(filePath);
@@ -22,6 +23,8 @@ public class Main {
 			System.out.println("Input: \n" + boardFile);
 			final Board board = BoardParser.parse(boardFile.toString());
 			System.out.println("The constructed board is " + board);
+			Board right = new Board("test", 0, 0, 0);
+			board.addNeightbor(right, Border.RIGHT);
 			new BoardAnimation(board);
 		} catch (IOException e) {
 			System.out.println(file + " not found");

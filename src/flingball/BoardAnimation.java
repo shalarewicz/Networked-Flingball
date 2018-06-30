@@ -5,8 +5,6 @@ import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.awt.image.ImageObserver;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -50,15 +48,6 @@ public class BoardAnimation {
 	                frame.setLocationRelativeTo(null);
 	                frame.setVisible(true);
 	                frame.addKeyListener(board.keyListener);
-	                // TODO Remove if putting the listener in board works. 
-//	                	new KeyAdapter() {
-//							@Override public void keyReleased(KeyEvent e) {
-//								board.onKeyUp(KeyNames.keyName.get(e.getKeyCode()));
-//							}
-//							@Override public void keyPressed(KeyEvent e) {
-//								board.onKeyDown(KeyNames.keyName.get(e.getKeyCode()));
-//							}
-//	                	});
 	            }
 	        });
 	        checkRep();
@@ -68,16 +57,14 @@ public class BoardAnimation {
 
 			private static final long serialVersionUID = 1L;
 			private Board board;
-			private final int L;
 
 	        public TestPane(Board board) {
 	        	this.board= board;
-	        	this.L = board.L;
 	            Timer timer = new Timer();
+	            board.play((double) FRAME_RATE / 1000);
 	            TimerTask play = new TimerTask() {
 	                @Override
 	                public void run() {
-	                    board.play((double) FRAME_RATE / 1000);
 	                    repaint();
 	                }
 	            };
@@ -87,7 +74,7 @@ public class BoardAnimation {
 
 	        @Override
 	        public Dimension getPreferredSize() {
-	            return new Dimension(this.board.HEIGHT * this.L, this.board.WIDTH * this.L);
+	            return new Dimension(this.board.HEIGHT * Board.L, this.board.WIDTH * Board.L);
 	        }
 
 	        @Override
@@ -95,32 +82,32 @@ public class BoardAnimation {
 	            super.paintComponent(graphics);
 	            Graphics2D g2d = (Graphics2D) graphics.create();
 	            graphics.setColor(Color.BLACK);
-	    		graphics.fillRect(0, 0, this.board.HEIGHT * this.L, this.board.WIDTH * this.L);
+	    		graphics.fillRect(0, 0, this.board.HEIGHT * Board.L, this.board.WIDTH * Board.L);
 	    		
 	    		final ImageObserver NO_OBSERVER_NEEDED = null;
 	    		
 	    		graphics.setColor(Color.BLUE);
 	    		for (Ball ball : this.board.getBalls()) {
-	    			final Vect anchor = ball.getAnchor().times(this.L);
+	    			final Vect anchor = ball.getAnchor().times(Board.L);
 	    			
 	    			
-	    			g2d.drawImage(ball.generate(this.L), (int) anchor.x(), (int) anchor.y(), NO_OBSERVER_NEEDED);
+	    			g2d.drawImage(ball.generate(Board.L), (int) anchor.x(), (int) anchor.y(), NO_OBSERVER_NEEDED);
 	    					
 	    		}
 	    		
 	    		for (Gadget gadget : this.board.getGadgets()) {
-	    			final int xAnchor = (int) gadget.position().x()*this.L;
-	    			final int yAnchor = (int) gadget.position().y()*this.L;
+	    			final int xAnchor = (int) gadget.position().x()*Board.L;
+	    			final int yAnchor = (int) gadget.position().y()*Board.L;
 	    			
-	    			g2d.drawImage(gadget.generate(this.L), xAnchor, yAnchor, NO_OBSERVER_NEEDED);
+	    			g2d.drawImage(gadget.generate(Board.L), xAnchor, yAnchor, NO_OBSERVER_NEEDED);
 	    			
 	    		}
 	    		
 	    		//TODO REMOVE GRID
 	    		for (int i = 1; i <= 20; i++) {
 	    			g2d.setColor(Color.GREEN);
-	    			g2d.drawLine(0, i*this.L, this.L * this.L, i*this.L);
-	    			g2d.drawLine(i*this.L, 0, i*this.L, this.L * this.L);
+	    			g2d.drawLine(0, i*Board.L, Board.L * Board.L, i*Board.L);
+	    			g2d.drawLine(i*Board.L, 0, i*Board.L, Board.L * Board.L);
 	    			
 	    			
 	    		}

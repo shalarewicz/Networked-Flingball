@@ -15,6 +15,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JPanel;
 
@@ -123,7 +124,7 @@ public class Board extends JPanel{
 		}
 		
 		for (Ball ball : balls) {
-			assert names.add(ball.name()) : "Dublicate name - ball: " + ball;
+			assert names.add(ball.name()) : "Dublicate name - ball: " + ball + " on board " + this.NAME;
 			final Vect position = ball.getAnchor();
 			
 			assert position.x() >= 0 : "x < 0: " + ball;
@@ -157,23 +158,31 @@ public class Board extends JPanel{
 			}
 		}
 		
-		for (Board neighbor : neighbors.keySet()) {
-			assert neighbor.neighbors.containsKey(this) : "Connection not symmetric" + this.NAME + neighbor.NAME;
+		for (Wall wall : neighbors.keySet()) {
 			
-			switch (neighbors.get(neighbor)) {
-			case TOP:
+		//	assert neighbors.get(wall).neighbors : "Connection not symmetric" + this.NAME + neighbor.NAME;
+			
+			Map<String, String> connections = new HashMap<String, String>();
+			
+			for (Wall connectedWall : this.neighbors.get(wall).neighbors.keySet()) {
+				connections.put(connectedWall.name(), this.neighbors.get(wall).neighbors.get(connectedWall).NAME);
+			}
+			
+			// Checks for a symmetric connection. 
+			switch (wall.name()) {
+			case "TOP":
 				// If this board is connected to the neighboring board at the top then the neighboring board
 				// must be connected to this board at the bottom
-				assert neighbor.neighbors.get(this).equals(Neighbor.BOTTOM);
+				assert connections.containsKey("BOTTOM") && connections.get("BOTTOM").equals(this.NAME);
 				break;
-			case BOTTOM:
-				assert neighbor.neighbors.get(this).equals(Neighbor.TOP);
+			case "BOTTOM":
+				assert connections.containsKey("TOP") && connections.get("TOP").equals(this.NAME);
 				break;
-			case LEFT:
-				assert neighbor.neighbors.get(this).equals(Neighbor.RIGHT);
+			case "LEFT":
+				assert connections.containsKey("RIGHT") && connections.get("RIGHT").equals(this.NAME);
 				break;
-			case RIGHT:
-				assert neighbor.neighbors.get(this).equals(Neighbor.LEFT);
+			case "RIGHT":
+				assert connections.containsKey("LEFT") && connections.get("LEFT").equals(this.NAME);
 				break;
 			default:
 				break;
@@ -210,11 +219,11 @@ public class Board extends JPanel{
 	// Objects on board
 	private List<Gadget> gadgets = new ArrayList<Gadget>();
 	private List<Ball> balls = new ArrayList<Ball>();
+	private Set<BallListener> ballListeners = new HashSet<BallListener>();
 	private Map<Portal, List<String>> portals = new HashMap<Portal, List<String>>();
-	private Set<Absorber> absorbers = new HashSet<Absorber>();
 	private final Set<Wall> walls = new HashSet<Wall>(Arrays.asList(TOP, BOTTOM, LEFT, RIGHT));
 	
-	private ConcurrentMap<Board, Neighbor> neighbors = new ConcurrentHashMap<Board, Neighbor>();
+	private ConcurrentMap<Wall, Board> neighbors = new ConcurrentHashMap<Wall, Board>();
 	
 	private ConcurrentMap<Gadget, List<Gadget>> triggers = new ConcurrentHashMap<Gadget, List<Gadget>>();
 	private ConcurrentMap<Gadget, List<Action>> boardTriggers = new ConcurrentHashMap<Gadget, List<Action>>();
@@ -235,15 +244,6 @@ public class Board extends JPanel{
 		}
 	};
 
-	/**
-	 * Locations for a neighboring board or a border wall
-	 */
-	private enum Neighbor {
-		TOP, BOTTOM, LEFT, RIGHT
-	}
-	
-	
-	//TODO Factory methods why???
 
 	/**
 	 * Constructs a blank board with the provided name and constants
@@ -252,13 +252,15 @@ public class Board extends JPanel{
 	 * @param friction1 value of mu1
 	 * @param friction2 value of mu2
 	 */
+	// TODO Should this be protected?
 	public Board(String name, double gravity, double friction1, double friction2) {
 		this.NAME = name;
 		this.gravity = gravity;
 		this.friction1 = friction1;
 		this.friction2 = friction2;
 		// Set a sufficiently small foresight for the physics engine to avoid
-		// mistimed flipper collisions.
+		// mistimed flipper collisions. 
+		// TODO Is this doing anything
 		Physics.setForesight(0.0001);
 		checkRep();
 	}
@@ -278,17 +280,70 @@ public class Board extends JPanel{
 		checkRep();	
 	}
 	
+	//TODO
+	public interface BallListener {
+		public void onStart(final double time);
+		
+		public void onEnd();
+		
+		public String name();
+	}
 	
 	/**
 	 * Adds a ball to the flingball board using the ball's position and velocity. If the ball has a position 
 	 * not on the board, it is not added. If the ball has a velocity >= 200 L / s, the velocity is set to 200. 
 	 * @param ball ball to be added. 
+	 * @return the listener for the Ball
 	 */
-	public void addBall(Ball ball) {
+	public BallListener addBall(Ball ball) {
 		//TODO Start a new thread for each ball. this is done in play but what about balls added at a later point. 
 		balls.add(ball);
+//		new Thread(() ->  {
+//			while (true) {
+//				try {
+//				moveOneBall(ball, BoardAnimation.FRAME_RATE / 1000);
+//				Thread.sleep(BoardAnimation.FRAME_RATE);
+//				} catch (InterruptedException e) {
+//					e.printStackTrace();
+//				}
+//			}
+//		}, ball.name()).start();
+		BallListener listener = new BallListener() {
+			Thread worker;
+			AtomicBoolean running = new AtomicBoolean(false);
+			@Override
+			public void onStart(final double time) {
+				this.running.set(true);
+				this.worker = new Thread(() ->  {
+					while (running.get()) {
+						try {
+						moveOneBall(ball, time);
+						Thread.sleep( (long) (time * 1000));
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
+				}, ball.name());
+				worker.start();
+			}
+			
+			@Override
+			public void onEnd() {
+				this.running.set(false);
+			}
+			
+			@Override
+			public String name() {
+				return worker.getName();
+			}
+		};
+		this.ballListeners.add(listener);
 		checkRep();
+		return listener;
 	}
+	
+	
+	
 	
 	/**
 	 * Removes a ball to the flingball board. 
@@ -297,6 +352,13 @@ public class Board extends JPanel{
 	 */
 	public void removeBall(Ball ball) {
 		balls.remove(ball);
+		for (BallListener listener : this.ballListeners) {
+			if (ball.name().equals(listener.name())) {
+				listener.onEnd();
+				this.ballListeners.remove(listener);
+				break;
+			}
+		}
 		checkRep();
 	}
 	
@@ -486,6 +548,9 @@ public class Board extends JPanel{
 	}
 	
 	
+	public enum Border {
+		TOP, BOTTOM, LEFT, RIGHT;
+	}
 	
 	/**
 	 * Connects two boards at the given Wall. The connection is symmetric. That is that if 
@@ -493,10 +558,34 @@ public class Board extends JPanel{
 	 * at the BOTTOM
 	 * 
 	 * @param neighbor board being connected to this board
-	 * @param border location on this board where the other board is connected
+	 * @param border wall on this board where the other board is connected
 	 */
-	public void addNeightbor(Board neighbor, Wall border) {
-		//TODO
+	public void addNeightbor(Board neighbor, Border border) {
+		switch (border) {
+		case TOP:{
+			this.neighbors.putIfAbsent(this.TOP, neighbor);
+			neighbor.neighbors.putIfAbsent(neighbor.BOTTOM, this);
+			break;
+		}
+		case BOTTOM: {
+			this.neighbors.putIfAbsent(this.BOTTOM, neighbor);
+			neighbor.neighbors.putIfAbsent(neighbor.TOP, this);
+			break;
+		}
+		case LEFT: {
+			this.neighbors.putIfAbsent(this.LEFT, neighbor);
+			neighbor.neighbors.putIfAbsent(neighbor.RIGHT, this);
+			break;
+		}
+		case RIGHT: {
+			this.neighbors.putIfAbsent(this.RIGHT, neighbor);
+			neighbor.neighbors.putIfAbsent(neighbor.LEFT, this);
+			break;
+		}
+		default:
+			break;
+		
+		}
 	}
 	
 	public List<Ball> getBalls() {
@@ -515,29 +604,10 @@ public class Board extends JPanel{
 	 * @param time length of time the board is played. 
 	 */
 	public void play(final double time) {
-		
 		//TODO Add an event queue so that actions that could not be performed are performed at the earliest possible moment
-			for (Ball ball : balls) {
-			//	new Thread(() ->  {
-					// TODO Since we're using threads here play will continue.
-					// need to change how BoardAnimation plays the game since play 
-					// no longer needs to be called repeatedly. Also need to account
-					// for newly added balls. 
-	//				while (true) {
-	//					try {
-						moveOneBall(ball, time);
-//							Thread.sleep(5L);
-//						} catch (InterruptedException e) {
-//							e.printStackTrace();
-//						}
-					}
-				//}, ball.name()).start();
-//			}
-//			for (int i = 0; i < this.balls.size(); i++) {
-//					if (!balls.get(i).isTrapped()) {
-//						moveOneBall(balls.get(i), time);
-//					}
-//				}
+		for (BallListener listener : this.ballListeners) {
+			listener.onStart(time);
+		}
 			checkRep();
 	}
 
@@ -548,6 +618,7 @@ public class Board extends JPanel{
 	 * @param time
 	 */
 	private void moveOneBall(Ball ball, final double time) {
+		// System.out.println("Ball center " + ball.getBoardCenter() + " on " + this.NAME);
 		final Gadget NO_COLLISION = new Wall("NO_COLLISION", 0, 0, 0, 0);
 		double collisionTime = Double.POSITIVE_INFINITY;
 		Gadget nextGadget = NO_COLLISION;
@@ -580,7 +651,37 @@ public class Board extends JPanel{
 //				collisionTime = nextGadget.collisionTime(ball);
 //			}
 			checkRep();
-			nextGadget.reflectBall(ball);
+			
+			// Check if the board is connected to another board and handle the ball transfer
+			if (this.neighbors.keySet().contains(nextGadget)) {
+				this.removeBall(ball);
+				BallListener listener = this.neighbors.get(nextGadget).addBall(ball);
+				Vect center = ball.getBoardCenter();
+				//TODO This doesn't account for Gadgets. Should probably do a collision check on the new board. 
+				switch (nextGadget.name()) {
+				case "TOP":{
+					System.out.println("Moving to TOP board");
+					ball.setBoardPosition(new Vect(center.x(), 0 + ball.getRadius()));
+					break;
+				}
+				case "BOTTOM":
+					System.out.println("Moving to BOTTOM board");
+					ball.setBoardPosition(new Vect(center.x(), 20 - ball.getRadius()));
+					break;
+				case "LEFT":
+					System.out.println("Moving to LEFT board");
+					ball.setBoardPosition(new Vect(20 - ball.getRadius(), center.y()));
+					break;
+				case "RIGHT":
+					System.out.println("Moving to RIGHT board");
+					ball.setBoardPosition(new Vect(ball.getRadius(), center.y())); //TODO  x coord
+					break;
+				}
+				listener.onStart((double) BoardAnimation.FRAME_RATE / 1000);
+				return;
+			} else {
+				nextGadget.reflectBall(ball);
+			}
 			
 			// Perform any actions triggered by the collision
 			if (triggers.containsKey(nextGadget)) {
@@ -592,7 +693,7 @@ public class Board extends JPanel{
 			}
 			if (boardTriggers.containsKey(nextGadget)) {
 				for (Action action : boardTriggers.get(nextGadget)) {
-					// Come back to this. It should be possible to do this without ball
+					// TODO Board Actions Come back to this. It should be possible to do this without ball
 				//	this.takeAction(action, ball);
 				}
 			}
@@ -612,7 +713,7 @@ public class Board extends JPanel{
 	 * @param action action to be taken. 
 	 */
 	private void takeAction(Action action) {
-		//TODO
+		//TODO BoardActions
 	}
 	
 	/**
@@ -676,54 +777,14 @@ public class Board extends JPanel{
 		if (name.equals(this.NAME)) {
 			return this;
 		}
-		for (Board b : neighbors.keySet()) {
-			if (name.equals(b.NAME)) {
-				return b;
+		for (Wall wall : neighbors.keySet()) {
+			Board board = neighbors.get(wall);
+			if (name.equals(board.NAME)) {
+				return board;
 			}
 		}
 		throw new NoSuchElementException(name + " board not found");
 	}
-	
-	
-	
-	
-	
-//	//TODO Remove replaced by onKey
-//	void onKeyUp(String key) {
-//		for (String k : keyUpTriggers.keySet()) {
-//			for (Gadget g : keyUpTriggers.get(k)) {
-//				if (k.equals(key)) {
-//					g.takeAction();
-//				}
-//			}
-//		}
-//		for (String k : keyUpBoardTriggers.keySet()) {
-//			for (Action a : keyUpBoardTriggers.get(k)) {
-//				if (k.equals(key)) {
-//					this.takeAction(a);
-//				}
-//			}
-//		}
-//	}
-//	
-//	//TODO Remove replaced by onKey
-//	void onKeyDown(String key) {
-//		for (String k : keyDownTriggers.keySet()) {
-//			for (Gadget g : keyUpTriggers.get(k)) {
-//				if (k.equals(key)) {
-//					g.takeAction();
-//				}
-//			}
-//		}
-//		for (String k : keyDownBoardTriggers.keySet()) {
-//			for (Action a : keyUpBoardTriggers.get(k)) {
-//				if (k.equals(key)) {
-//					this.takeAction(a);
-//				}
-//			}
-//		}
-//	}
-	
 	
 	/**
 	 * Triggers the actions associated with key in keyTriggers and keyBoardTriggers
@@ -749,9 +810,13 @@ public class Board extends JPanel{
 		}
 	}
 	
-	
+	/**
+	 * 
+	 * @param gadget
+	 */
 	private void setCoverage(Gadget gadget) {
 		// TODO This is a good place to practice the visitor method since absorbers cover a different area
+		// TODO Remove setCoverage from Gadget to prevent rep exposure. 
 		final int height = gadget.height();
 		final int width = gadget.width();
 		final int x = (int) gadget.position().x();
@@ -793,6 +858,16 @@ public class Board extends JPanel{
 		}
 	}
 	
+	
+	@Override
+	public String toString() {
+		StringBuilder result = new StringBuilder();
+		result.append("FLINGBALL BOARD:{ Specs:" + this.NAME + ", Gravity: " + this.gravity);
+		result.append(", friction1: " + this.friction1 + ", friction2: " + this.friction2);
+		result.append(", Balls:" + this.balls);
+		result.append(", Gadgets:" + this.gadgets +"}");
+		return result.toString();
+	}
 	
 	
 	
