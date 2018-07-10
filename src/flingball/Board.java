@@ -5,8 +5,12 @@ import java.awt.Graphics;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.ImageObserver;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -112,6 +116,7 @@ public class Board extends JPanel{
 			final Vect position = gadget.position();
 			assert positions.add(position) : "Duplicate gadget positon: " + gadget;
 			
+			//TODO Ballsdoin't have to be entirely on the board if the board is connected. 
 			assert position.x() >= 0 : "x < 0: " + gadget;
 			assert position.y() >= 0 : "y < 0: " + gadget;
 			
@@ -158,36 +163,38 @@ public class Board extends JPanel{
 			}
 		}
 		
-		for (Wall wall : neighbors.keySet()) {
-			
-		//	assert neighbors.get(wall).neighbors : "Connection not symmetric" + this.NAME + neighbor.NAME;
-			
-			Map<String, String> connections = new HashMap<String, String>();
-			
-			for (Wall connectedWall : this.neighbors.get(wall).neighbors.keySet()) {
-				connections.put(connectedWall.name(), this.neighbors.get(wall).neighbors.get(connectedWall).NAME);
-			}
-			
-			// Checks for a symmetric connection. 
-			switch (wall.name()) {
-			case "TOP":
-				// If this board is connected to the neighboring board at the top then the neighboring board
-				// must be connected to this board at the bottom
-				assert connections.containsKey("BOTTOM") && connections.get("BOTTOM").equals(this.NAME);
-				break;
-			case "BOTTOM":
-				assert connections.containsKey("TOP") && connections.get("TOP").equals(this.NAME);
-				break;
-			case "LEFT":
-				assert connections.containsKey("RIGHT") && connections.get("RIGHT").equals(this.NAME);
-				break;
-			case "RIGHT":
-				assert connections.containsKey("LEFT") && connections.get("LEFT").equals(this.NAME);
-				break;
-			default:
-				break;
-			}
-		}
+		
+		//TODO This should become part of FlingballServers checkRep() to check for symmetric connections. 
+//		for (Wall wall : neighbors.keySet()) {
+//			
+//		//	assert neighbors.get(wall).neighbors : "Connection not symmetric" + this.NAME + neighbor.NAME;
+//			
+//			Map<String, String> connections = new HashMap<String, String>();
+//			
+//			for (Wall connectedWall : this.neighbors.get(wall).neighbors.keySet()) {
+//				connections.put(connectedWall.name(), this.neighbors.get(wall).neighbors.get(connectedWall).NAME);
+//			}
+//			
+//			// Checks for a symmetric connection. 
+//			switch (wall.name()) {
+//			case "TOP":
+//				// If this board is connected to the neighboring board at the top then the neighboring board
+//				// must be connected to this board at the bottom
+//				assert connections.containsKey("BOTTOM") && connections.get("BOTTOM").equals(this.NAME);
+//				break;
+//			case "BOTTOM":
+//				assert connections.containsKey("TOP") && connections.get("TOP").equals(this.NAME);
+//				break;
+//			case "LEFT":
+//				assert connections.containsKey("RIGHT") && connections.get("RIGHT").equals(this.NAME);
+//				break;
+//			case "RIGHT":
+//				assert connections.containsKey("LEFT") && connections.get("LEFT").equals(this.NAME);
+//				break;
+//			default:
+//				break;
+//			}
+//		}
 	}
 	
 	// Default Values
@@ -223,7 +230,7 @@ public class Board extends JPanel{
 	private Map<Portal, List<String>> portals = new HashMap<Portal, List<String>>();
 	private final Set<Wall> walls = new HashSet<Wall>(Arrays.asList(TOP, BOTTOM, LEFT, RIGHT));
 	
-	private ConcurrentMap<Wall, Board> neighbors = new ConcurrentHashMap<Wall, Board>();
+	private final Set<Wall> neighbors = ConcurrentHashMap.newKeySet();
 	
 	private ConcurrentMap<Gadget, List<Gadget>> triggers = new ConcurrentHashMap<Gadget, List<Gadget>>();
 	private ConcurrentMap<Gadget, List<Action>> boardTriggers = new ConcurrentHashMap<Gadget, List<Action>>();
@@ -235,6 +242,8 @@ public class Board extends JPanel{
 	private ConcurrentMap<String, List<Action>> keyDownBoardTriggers = new ConcurrentHashMap<String, List<Action>>();
 	
 	// Listeners
+	private final List<RequestListener> requestListeners = new ArrayList<RequestListener>(); //TODO Don't use null here
+	
 	public final KeyAdapter keyListener = new KeyAdapter() {
 		@Override public void keyReleased(KeyEvent e) {
 			onKey(KeyNames.keyName.get(e.getKeyCode()), keyUpTriggers, keyUpBoardTriggers);
@@ -263,6 +272,7 @@ public class Board extends JPanel{
 		// TODO Is this doing anything
 		Physics.setForesight(0.0001);
 		checkRep();
+		// TODO Only start this if board in in client-server mode. Should be done from Flingball.java
 	}
 	
 	//Instance Methods
@@ -280,7 +290,7 @@ public class Board extends JPanel{
 		checkRep();	
 	}
 	
-	//TODO
+	//TODO spec
 	public interface BallListener {
 		public void onStart(final double time);
 		
@@ -553,39 +563,26 @@ public class Board extends JPanel{
 	}
 	
 	/**
+	 *TODO Update Spec
 	 * Connects two boards at the given Wall. The connection is symmetric. That is that if 
 	 * Board A is connected to Board B a the TOP then Board B is automatically connected to Board A 
 	 * at the BOTTOM
 	 * 
-	 * @param neighbor board being connected to this board
+	 * @param neighbor name of board being connected to this board
 	 * @param border wall on this board where the other board is connected
 	 */
-	public void addNeightbor(Board neighbor, Border border) {
-		switch (border) {
-		case TOP:{
-			this.neighbors.putIfAbsent(this.TOP, neighbor);
-			neighbor.neighbors.putIfAbsent(neighbor.BOTTOM, this);
-			break;
-		}
-		case BOTTOM: {
-			this.neighbors.putIfAbsent(this.BOTTOM, neighbor);
-			neighbor.neighbors.putIfAbsent(neighbor.TOP, this);
-			break;
-		}
-		case LEFT: {
-			this.neighbors.putIfAbsent(this.LEFT, neighbor);
-			neighbor.neighbors.putIfAbsent(neighbor.RIGHT, this);
-			break;
-		}
-		case RIGHT: {
-			this.neighbors.putIfAbsent(this.RIGHT, neighbor);
-			neighbor.neighbors.putIfAbsent(neighbor.LEFT, this);
-			break;
-		}
-		default:
-			break;
-		
-		}
+	public void addNeightbor(Wall border) {
+		this.neighbors.add(border);
+		checkRep();
+	}
+	
+	/**
+	 * TODO
+	 * @param border
+	 */
+	public void removeNeightbor(Wall border) {
+		this.neighbors.remove(border);
+		checkRep();
 	}
 	
 	public List<Ball> getBalls() {
@@ -653,31 +650,33 @@ public class Board extends JPanel{
 			checkRep();
 			
 			// Check if the board is connected to another board and handle the ball transfer
-			if (this.neighbors.keySet().contains(nextGadget)) {
+			if (this.neighbors.contains(nextGadget)) {
 				this.removeBall(ball);
-				BallListener listener = this.neighbors.get(nextGadget).addBall(ball);
+				//TODO This doesn't account for Gadgets right on the wall. Should probably do a collision check on the new board. 
 				Vect center = ball.getBoardCenter();
-				//TODO This doesn't account for Gadgets. Should probably do a collision check on the new board. 
 				switch (nextGadget.name()) {
 				case "TOP":{
-					System.out.println("Moving to TOP board");
-					ball.setBoardPosition(new Vect(center.x(), 0 + ball.getRadius()));
+					System.out.println("Moving through TOP board");
+					ball.setBoardPosition(new Vect(center.x(), 20 - ball.getRadius()));
 					break;
 				}
 				case "BOTTOM":
-					System.out.println("Moving to BOTTOM board");
-					ball.setBoardPosition(new Vect(center.x(), 20 - ball.getRadius()));
+					System.out.println("Moving through BOTTOM board");
+					ball.setBoardPosition(new Vect(center.x(), 0 + ball.getRadius()));
 					break;
 				case "LEFT":
-					System.out.println("Moving to LEFT board");
-					ball.setBoardPosition(new Vect(20 - ball.getRadius(), center.y()));
+					ball.setBoardPosition(new Vect(ball.getRadius(), center.y())); 
+					System.out.println("Moving through LEFT board");
 					break;
 				case "RIGHT":
-					System.out.println("Moving to RIGHT board");
-					ball.setBoardPosition(new Vect(ball.getRadius(), center.y())); //TODO  x coord
+					System.out.println("Moving through RIGHT board");
+					ball.setBoardPosition(new Vect(20 - ball.getRadius(), center.y()));
 					break;
 				}
-				listener.onStart((double) BoardAnimation.FRAME_RATE / 1000);
+				Vect velocity = ball.getVelocity();
+				center = ball.getBoardCenter();
+				String name = ball.name().replaceAll("\\s", "");  // Ball Cannot have any spaces. 
+				this.notifyRequestListeners("addBall " + nextGadget.name() + " " + name + " " + center.x() + " " + center.y() + " " + velocity.x() + " " + velocity.y());
 				return;
 			} else {
 				nextGadget.reflectBall(ball);
@@ -732,15 +731,17 @@ public class Board extends JPanel{
 	 * Connects all portals on the board
 	 */
 	void connectPortals() {
-		for (Portal portal : portals.keySet()) {
-			try {
-				Board otherBoard = this.getBoard(portals.get(portal).get(1));
-				Portal target = otherBoard.getPortal(portals.get(portal).get(0));
-				portal.connect(target, otherBoard);
-			} catch (NoSuchElementException e) {
-				e.printStackTrace();
-			}	
-		}
+		// TODO
+		//throw new RuntimeException("Not Yet Implemented");
+//		for (Portal portal : portals.keySet()) {
+//			try {
+//				Board otherBoard = this.getBoard(portals.get(portal).get(1));
+//				Portal target = otherBoard.getPortal(portals.get(portal).get(0));
+//				portal.connect(target, otherBoard);
+//			} catch (NoSuchElementException e) {
+//				e.printStackTrace();
+//			}	
+//		}
 	}
 	
 	/**
@@ -773,18 +774,18 @@ public class Board extends JPanel{
 		throw new NoSuchElementException(name + " portal not found");
 	}
 	
-	private Board getBoard(String name) {
-		if (name.equals(this.NAME)) {
-			return this;
-		}
-		for (Wall wall : neighbors.keySet()) {
-			Board board = neighbors.get(wall);
-			if (name.equals(board.NAME)) {
-				return board;
-			}
-		}
-		throw new NoSuchElementException(name + " board not found");
-	}
+//	private Board getBoard(String name) {
+//		if (name.equals(this.NAME)) {
+//			return this;
+//		}
+//		for (Wall wall : neighbors.keySet()) {
+//			Board board = neighbors.get(wall);
+//			if (name.equals(board.NAME)) {
+//				return board;
+//			}
+//		}
+//		throw new NoSuchElementException(name + " board not found");
+//	}
 	
 	/**
 	 * Triggers the actions associated with key in keyTriggers and keyBoardTriggers
@@ -870,10 +871,74 @@ public class Board extends JPanel{
 	}
 	
 	
+	/**
+	 * Reads the response from the server and makes the appropriate changes. 
+	 * @param response the response from the server. 
+	 */
+	public void handleResponse(String response) {
+		 String[] tokens = response.split(" ");
+		 
+		 switch (tokens[0]) {
+		 case "QUIT": {
+			 //TODO
+			 break;
+		 }
+		 case "JOIN": {
+			 switch (tokens[1]) {
+			 case "TOP": {
+				 this.addNeightbor(this.TOP);
+				 break;
+			 }
+			 case "BOTTOM": {
+				 this.addNeightbor(this.BOTTOM);
+				 break;
+			 }
+			 case "LEFT": {
+				 this.addNeightbor(this.LEFT);
+				 break;
+			 }
+			case "RIGHT": {
+				 this.addNeightbor(this.RIGHT);
+				 break;
+			}
+			default: {
+				throw new RuntimeException("should never get here border not recognized " + tokens[1]);
+			}
+			}
+		  break;
+		 }
+		 
+		 case "ADD": {
+			 String name = tokens[2];
+			 double x = Double.parseDouble(tokens[2]);
+			 double y = Double.parseDouble(tokens[3]);
+			 double vx = Double.parseDouble(tokens[4]);
+			 double vy = Double.parseDouble(tokens[5]);
+			 BallListener listener = this.addBall(new Ball(name, new Vect(x, y), new Vect(vx, vy)));
+			 listener.onStart((double) BoardAnimation.FRAME_RATE / 1000);
+			 break;
+		 }
+		 case "CONNECT": {
+			 //TODO Support for portal connections from server. 
+			 break;
+		 }
+		 
+		 default: {
+			 throw new RuntimeException("Request not recognized: " + response);
+		 }
+		 }
+	}
 	
+
+	public void addRequestListener(RequestListener listener) {
+		this.requestListeners.add(listener);
+	}
 	
-	
-	
+	private void notifyRequestListeners(String request) {
+		for (RequestListener listener : this.requestListeners) {
+			listener.onRequest(request);
+		}
+	}
 	
 	
 	

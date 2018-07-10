@@ -4,15 +4,20 @@
 	<classpathentry kind="src" path="test"/>
 	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
-    <classpathentry kind="lib" path="lib/parserlib.jar">
-        <attributes>
-            <attribute name="javadoc_location" value="http://6031.mit.edu/parserlib/3.0.0/doc/"/>
-        </attributes>
-    </classpathentry>
-    <classpathentry kind="lib" path="lib/physics.jar">
-        <attributes>
-            <attribute name="javadoc_location" value="http://web.mit.edu/6.031/www/fa17/projects/fb1/physics-doc/"/>
-        </attributes>
-    </classpathentry>
+	<classpathentry kind="lib" path="lib/parserlib.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="http://6031.mit.edu/parserlib/3.0.0/doc/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="lib/physics.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="http://web.mit.edu/6.031/www/fa17/projects/fb1/physics-doc/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="lib/commons-cli-1.4-javadoc.jar"/>
+	<classpathentry kind="lib" path="lib/commons-cli-1.4-sources.jar"/>
+	<classpathentry kind="lib" path="lib/commons-cli-1.4-test-sources.jar"/>
+	<classpathentry kind="lib" path="lib/commons-cli-1.4-tests.jar"/>
+	<classpathentry kind="lib" path="lib/commons-cli-1.4.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
