@@ -36,12 +36,13 @@ public class Portal implements Gadget {
 	 */
 	
 	private final int x, y;
+	private Vect target;
 	private final String name;
 	private final Circle portal;
-	private final Board board;
 	private boolean connected = false;
-	private Portal target;
-	private Board targetBoard;
+	private String targetBoard;
+	//TODO is it worth keeping track of the target portal name?
+	
 	
 	private static final double RADIUS = 0.5;
 	private static final int HEIGHT = 1;
@@ -63,9 +64,6 @@ public class Portal implements Gadget {
 	
 	private void checkRep() {
 		assert this.portal.getRadius() == RADIUS : name + ": Portal radius != 1: " + this.portal.getRadius();
-		if (this.connected) {
-			assert this.target instanceof Portal : name + ": Portal is not connected to an object of type Portal";
-		}
 	}
 	
 	/**
@@ -74,12 +72,12 @@ public class Portal implements Gadget {
 	 * @param x x coordinate of upper left corner of the bounding box of the portal
 	 * @param y y coordinate of upper left corner of the bounding box of the portal
 	 */
-	public Portal(String name, int x, int y, Board board) {
+	public Portal(String name, int x, int y) {
 		this.x = x;
 		this.y = -y;
 		this.name = name;
+		this.target = new Vect(x + RADIUS, y + RADIUS);
 		this.portal = new Circle(x + RADIUS, -y - RADIUS, RADIUS);
-		this.board = board;
 		this.checkRep();
 	}
 	
@@ -115,13 +113,11 @@ public class Portal implements Gadget {
 
 	@Override
 	public void reflectBall(Ball ball) {
+		// Collisions only occur if the portal is connected. if not, the pass passes over the portal 
+		// unaffected. 
 		if (this.connected) {
-			ball.setCartesianPosition(target.portal.getCenter());
-			if (!targetBoard.NAME.equals(this.board.NAME)) {
-				this.board.removeBall(ball);
-				BallListener listener = this.targetBoard.addBall(ball);
-				listener.onStart(BoardAnimation.FRAME_RATE / 1000);
-			}
+			System.out.println("reflecting");
+			ball.setBoardPosition(this.target);
 		}
 	}
 
@@ -178,19 +174,61 @@ public class Portal implements Gadget {
 	 * Establishes a one way connection between this portal that. A ball that 
 	 * collides with this portal will be teleported to that and exit with the 
 	 * same velocity and direction. 
-	 * @param that
+	 * @param target
+	 * @param targetBoard name of the Board that target is on 
 	 */
-	public void connect(Portal that, Board board) {
-		this.target = that;
-		this.targetBoard = board;
+	public void connect(Vect target, String targetBoard) {
+		this.target = target;
+		System.out.println("Set target to " + this.target);
+		this.targetBoard = targetBoard;
 		this.connected = true;
 		checkRep();
+	}
+	
+	/**
+	 * 
+	 * @return the name of the target board
+	 */
+	public String getTargetBboard() {
+		return this.targetBoard;
+	}
+	
+	/**
+	 * 
+	 * @return the location of the ball's center after it has teleported. Not necessarily
+	 * on the same board. 
+	 */
+	public Vect getTarget() {
+		return this.target;
+	}
+	
+	/**
+	 * 
+	 * @return center of this Portal on a flingball board
+	 */
+	public Vect getCenter() {
+		return new Vect(this.portal.getCenter().x(), -this.portal.getCenter().y());
+	}
+	
+	/**
+	 * 
+	 * @return true if the ball is connected. 
+	 */
+	public boolean isConnected() {
+		return this.connected;
+	}
+	
+	/**
+	 * Connects a portal
+	 */
+	public void connect() {
+		this.connected = true;
 	}
 	
 	@Override
 	public String toString() {
 		//TODO include target board?
-		return "{PORTAL: " + name + " " + this.position() + " connected to " + this.target.name + " on " + this.targetBoard.NAME + "}";
+		return "{PORTAL: " + name + " " + this.position() + " connected to portal at" + this.target + " on " + this.targetBoard + "}";
 	}
 	
 	@Override

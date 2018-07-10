@@ -26,6 +26,8 @@ public class FlingballServer {
 	
 	final ConcurrentMap<String, PrintWriter> outputStreams = new ConcurrentHashMap<String, PrintWriter>();
 	
+	final ConcurrentMap<String, String> portals = new ConcurrentHashMap<String, String>();
+	
 	private final static int DEFAULT_PORT = 10987;
 	/*
 	 * Server needs to be able to 
@@ -109,9 +111,7 @@ public class FlingballServer {
 						out.println("NAME?");
 					} else {
 						// Accept the response
-						// TODO what if the name already exists?
 						System.out.println("handling command " + input);
-						System.out.println("Socket open " + s.isClosed());
 						name = tokens[1];
 						if (this.boards.keySet().contains(name)) {
 							System.out.println("Board name already exists closing connection");
@@ -120,17 +120,14 @@ public class FlingballServer {
 						} else {
 							this.neighbors.put(name, new ConcurrentHashMap<Board.Border, String>());
 							this.boards.put(name, ConcurrentHashMap.newKeySet());
-							this.outputStreams.putIfAbsent(name, out);
+							this.outputStreams.put(name, out);
 						}
-						System.out.println("Closing i/o streams socket is closed? " + s.isClosed());
 //						out.close();
 //						in.close();
-						System.out.println("Closed i/o streams socket is closed? " + s.isClosed());
 						break;
 					}
 				}
 				new Thread(() -> {
-					System.out.println("socket closed in new thread? " + s.isClosed());
 					try {
 						// handle the client
 						try {
@@ -160,8 +157,6 @@ public class FlingballServer {
      * @throws IOException if the connection encounters an error or closes unexpectedly
      */
     private void handleConnection(Socket socket, String clientID) throws IOException{
-    	System.out.println("handling connection");
-		System.out.println(socket.isClosed());
     	 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
          PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
          try {
@@ -170,7 +165,6 @@ public class FlingballServer {
 	        	try {
 	        		String output = handleRequest(input, String.valueOf(clientID));
 	        		if (output.equals("QUIT")) {
-	        			System.out.println("Closing the socket");
 	        			this.boards.remove(clientID);
 	        			socket.close();
 	        			break;
@@ -182,23 +176,15 @@ public class FlingballServer {
 	        		// Sends updates to boards connected to the server if the above request warrants a change to 
 	        		// a different board. (i.e. if two boards are joined or a ball is teleported. 
 	        		System.out.print("Checking for board updates");
-//	        		for (String board : this.boards.keySet()) {
-//	        			System.out.print("Sending responses");
-//	        			for (String response : this.boards.get(board)) {
-//	        				out.println(this.boards.get(response));
-//	        			}
-//	        			this.boards.get(board).clear();
-//	        			// TODO Will this cause an iterator bug? - Probably
-//	        		}
 	        		for (String board : this.outputStreams.keySet()) {
 	        			PrintWriter boardOut = this.outputStreams.get(board);
 	        			for (String response : this.boards.get(board)) {
+	        				System.out.println("server sent " + response);
 	        				boardOut.println(response);
 	        			}
 	        			this.boards.get(board).clear();
 	        		}
 	        		
-	        		// Send requests to other boards to join/add ball etc.
 	        		
 	        	} catch (UnsupportedOperationException uoe) {
 	        		out.println(uoe.getMessage() + ": Command not recognized");
@@ -310,9 +296,34 @@ public class FlingballServer {
     		 
     	 } 
     	 else if (tokens[0].equals("connect")) {
-    		 throw new UnsupportedOperationException("connect not implemented");
+    		 String source = tokens[1];
+    		 String target = tokens[2];
+    		 String targetBoard = tokens[3];
     		 
-    	 } else if (tokens[0].equals("watch")) {
+    		 this.portals.put(id + "/" + source, targetBoard + "/" + target);
+    		 this.boards.get(id).add("CONNECT " + source);
+    		 
+    	 } 
+    	 else if (tokens[0].equals("teleport")) {
+    		 String source = tokens[1];
+    		 
+    		 String[] destination = this.portals.get(id + "/" + source).split("/");
+    		 String target = destination[1];
+    		 String targetBoard = destination[0];
+    		 
+    		 String ball = tokens[2];
+			 String vx = tokens[3];
+			 String vy = tokens[4];
+			 
+			 this.boards.get(targetBoard).add("TELEPORT " + target + " " + ball + " " + vx + " " + vy);
+			 
+			 
+    		 
+    	 }
+    	 else if (tokens[0].equals("START")) {
+    		 this.boards.get(id).add("READY");
+    	 }
+    	 else if (tokens[0].equals("watch")) {
     		 //TODO Listen for updates to your board then return unless a new request is received
     		 // This might not be necessary
     		 throw new UnsupportedOperationException("watch not implemented");

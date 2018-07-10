@@ -226,7 +226,6 @@ public class Board extends JPanel{
 	// Objects on board
 	private List<Gadget> gadgets = new ArrayList<Gadget>();
 	private List<Ball> balls = new ArrayList<Ball>();
-	private Set<BallListener> ballListeners = new HashSet<BallListener>();
 	private Map<Portal, List<String>> portals = new HashMap<Portal, List<String>>();
 	private final Set<Wall> walls = new HashSet<Wall>(Arrays.asList(TOP, BOTTOM, LEFT, RIGHT));
 	
@@ -242,6 +241,7 @@ public class Board extends JPanel{
 	private ConcurrentMap<String, List<Action>> keyDownBoardTriggers = new ConcurrentHashMap<String, List<Action>>();
 	
 	// Listeners
+	private Set<BallListener> ballListeners = new HashSet<BallListener>();
 	private final List<RequestListener> requestListeners = new ArrayList<RequestListener>(); //TODO Don't use null here
 	
 	public final KeyAdapter keyListener = new KeyAdapter() {
@@ -676,8 +676,23 @@ public class Board extends JPanel{
 				Vect velocity = ball.getVelocity();
 				center = ball.getBoardCenter();
 				String name = ball.name().replaceAll("\\s", "");  // Ball Cannot have any spaces. 
+				
 				this.notifyRequestListeners("addBall " + nextGadget.name() + " " + name + " " + center.x() + " " + center.y() + " " + velocity.x() + " " + velocity.y());
 				return;
+				
+			} else if (nextGadget instanceof Portal 
+					&& !((Portal) nextGadget).getTargetBboard().equals(this.NAME) 
+					&& ((Portal) nextGadget).isConnected()) {
+				// If the ball hits a connected portal teleport it to the appropriate board. 
+				this.removeBall(ball);
+				
+				
+				//TODO Server Communication is slow if the ball teleports again then two balls with the same name
+				// are added. 
+				this.notifyRequestListeners("teleport " + nextGadget.name() + " " + ball.name() + " " + 
+						ball.getVelocity().x() + " " + ball.getVelocity().y());
+				
+				
 			} else {
 				nextGadget.reflectBall(ball);
 			}
@@ -718,30 +733,38 @@ public class Board extends JPanel{
 	/**
 	 * Adds a portal to the flingball board using the gadgets position. If the Gadget has a position
 	 * not on the board, it is not added. 
-	 * @param portal
-	 * @param name
-	 * @param board
+	 * @param portal portal that is added to this board
+	 * @param target name of the portal to which portal is connected
+	 * @param board name of the board on which the target is located
 	 */
-	void addPortal(Portal portal, String name, String board) {
-		portals.put(portal, Arrays.asList(name, board));
+	void addPortal(Portal portal, String target, String board) {
+		portals.put(portal, Arrays.asList(target, board));
 		this.addGadget(portal);
 	}
 	
 	/**
 	 * Connects all portals on the board
 	 */
-	void connectPortals() {
-		// TODO
-		//throw new RuntimeException("Not Yet Implemented");
-//		for (Portal portal : portals.keySet()) {
-//			try {
-//				Board otherBoard = this.getBoard(portals.get(portal).get(1));
-//				Portal target = otherBoard.getPortal(portals.get(portal).get(0));
-//				portal.connect(target, otherBoard);
-//			} catch (NoSuchElementException e) {
-//				e.printStackTrace();
-//			}	
-//		}
+	List<String> connectPortals() {
+		List<String> result = new ArrayList<String>();
+		for (Portal portal : portals.keySet()) {
+			try {
+				String otherBoard = this.portals.get(portal).get(1);
+				String target = this.portals.get(portal).get(0);
+				System.out.println("Connecting " + portal.name() + " to " + target + " on " + otherBoard);
+				if (otherBoard.equals(this.NAME)) {
+					// If connected to a portal on this board bypass the server. 
+					portal.connect(this.getPortal(target).getCenter(), otherBoard);
+				} else {
+					portal.connect();
+					result.add("connect " + portal.name() + " " + target + " " + otherBoard);
+				}
+			} catch (NoSuchElementException e) {
+				e.printStackTrace();
+			}	
+		}
+		System.out.println(result);
+		return result;
 	}
 	
 	/**
@@ -909,7 +932,7 @@ public class Board extends JPanel{
 		 }
 		 
 		 case "ADD": {
-			 String name = tokens[2];
+			 String name = tokens[1];
 			 double x = Double.parseDouble(tokens[2]);
 			 double y = Double.parseDouble(tokens[3]);
 			 double vx = Double.parseDouble(tokens[4]);
@@ -918,8 +941,19 @@ public class Board extends JPanel{
 			 listener.onStart((double) BoardAnimation.FRAME_RATE / 1000);
 			 break;
 		 }
+		 case "TELEPORT": {
+			 String target = tokens[1];
+			 String name = tokens[2];
+			 Vect center = this.getPortal(target).getCenter();
+			 double vx = Double.parseDouble(tokens[3]);
+			 double vy = Double.parseDouble(tokens[4]);
+			 BallListener listener = this.addBall(new Ball(name, center, new Vect(vx, vy)));
+			 listener.onStart((double) BoardAnimation.FRAME_RATE / 1000);
+			 break;
+		 }
 		 case "CONNECT": {
-			 //TODO Support for portal connections from server. 
+			 String portal = tokens[1];
+			 this.getPortal(portal).connect();
 			 break;
 		 }
 		 
