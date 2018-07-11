@@ -116,7 +116,6 @@ public class Portal implements Gadget {
 		// Collisions only occur if the portal is connected. if not, the pass passes over the portal 
 		// unaffected. 
 		if (this.connected) {
-			System.out.println("reflecting");
 			ball.setBoardPosition(this.target);
 		}
 	}
@@ -179,7 +178,6 @@ public class Portal implements Gadget {
 	 */
 	public void connect(Vect target, String targetBoard) {
 		this.target = target;
-		System.out.println("Set target to " + this.target);
 		this.targetBoard = targetBoard;
 		this.connected = true;
 		checkRep();

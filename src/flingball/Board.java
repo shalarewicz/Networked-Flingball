@@ -560,6 +560,41 @@ public class Board extends JPanel{
 	
 	public enum Border {
 		TOP, BOTTOM, LEFT, RIGHT;
+		
+		public Border complement() {
+			switch (this) {
+			case BOTTOM:
+				return TOP;
+			case LEFT:
+				return RIGHT;
+			case RIGHT:
+				return LEFT;
+			case TOP:
+				return BOTTOM;
+			default:
+				throw new RuntimeException("Should never get here. Invalid border " + this.toString());
+			}
+		}
+		
+		//TOOO SPEC
+		public static Border fromString(String s) throws NoSuchElementException{
+			switch (s) {
+			case "TOP": {
+				 return TOP;
+			 }
+			 case "BOTTOM": {
+				return BOTTOM;
+			 }
+			 case "LEFT": {
+				 return LEFT;
+			 }
+			case "RIGHT": {
+				return RIGHT;
+			}
+			default:
+				throw new NoSuchElementException("String does not match a border");
+			}
+		}
 	}
 	
 	/**
@@ -656,21 +691,18 @@ public class Board extends JPanel{
 				Vect center = ball.getBoardCenter();
 				switch (nextGadget.name()) {
 				case "TOP":{
-					System.out.println("Moving through TOP board");
 					ball.setBoardPosition(new Vect(center.x(), 20 - ball.getRadius()));
 					break;
 				}
 				case "BOTTOM":
-					System.out.println("Moving through BOTTOM board");
 					ball.setBoardPosition(new Vect(center.x(), 0 + ball.getRadius()));
 					break;
 				case "LEFT":
-					ball.setBoardPosition(new Vect(ball.getRadius(), center.y())); 
+					ball.setBoardPosition(new Vect(20 - ball.getRadius(), center.y()));
 					System.out.println("Moving through LEFT board");
 					break;
 				case "RIGHT":
-					System.out.println("Moving through RIGHT board");
-					ball.setBoardPosition(new Vect(20 - ball.getRadius(), center.y()));
+					ball.setBoardPosition(new Vect(ball.getRadius(), center.y())); 
 					break;
 				}
 				Vect velocity = ball.getVelocity();
@@ -751,7 +783,7 @@ public class Board extends JPanel{
 			try {
 				String otherBoard = this.portals.get(portal).get(1);
 				String target = this.portals.get(portal).get(0);
-				System.out.println("Connecting " + portal.name() + " to " + target + " on " + otherBoard);
+				//System.out.println("Connecting " + portal.name() + " to " + target + " on " + otherBoard);
 				if (otherBoard.equals(this.NAME)) {
 					// If connected to a portal on this board bypass the server. 
 					portal.connect(this.getPortal(target).getCenter(), otherBoard);
@@ -763,7 +795,7 @@ public class Board extends JPanel{
 				e.printStackTrace();
 			}	
 		}
-		System.out.println(result);
+		//System.out.println(result);
 		return result;
 	}
 	
@@ -955,6 +987,27 @@ public class Board extends JPanel{
 			 String portal = tokens[1];
 			 this.getPortal(portal).connect();
 			 break;
+		 }
+		 
+		 case "DISJOIN": {
+			Border border = Border.fromString(tokens[1]);
+			switch (border) {
+			case BOTTOM:
+				this.neighbors.remove(this.BOTTOM);
+				break;
+			case LEFT:
+				this.neighbors.remove(this.LEFT);
+				break;
+			case RIGHT:
+				this.neighbors.remove(this.RIGHT);
+				break;
+			case TOP:
+				this.neighbors.remove(this.TOP);
+				break;
+			default:
+				throw new RuntimeException("Cannot disjoin " + border);
+			}
+			break;
 		 }
 		 
 		 default: {

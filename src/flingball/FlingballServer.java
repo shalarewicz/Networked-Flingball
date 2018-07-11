@@ -89,32 +89,24 @@ public class FlingballServer {
 		while (true) {
 			// Blocks until a request is accepted
 			Socket s = this.serverSocket.accept();
-			System.out.println("accepted a connection");
-			if (s.isClosed()) {
-				System.out.print("Socket is closed");
-			}
 			if (s.isConnected()) {
 				
 				// Get the name of the board
+				BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
 				PrintWriter out = new PrintWriter(s.getOutputStream(), true);
 				out.println("NAME?");
 				String name;
 				// Wait for the response
 				while (true) {
-					BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
 					String input = in.readLine();
 					String[] tokens = input.split(" ");
-					System.out.println("received command " + input);
 					if (!tokens[0].equals("NAME")) {
 						// Invalid response
-						out.println("Response not recognized");
 						out.println("NAME?");
 					} else {
 						// Accept the response
-						System.out.println("handling command " + input);
 						name = tokens[1];
 						if (this.boards.keySet().contains(name)) {
-							System.out.println("Board name already exists closing connection");
 							out.println("ERROR: Duplicate Board Name. Connection Terminated");
 							//s.close();
 						} else {
@@ -122,8 +114,6 @@ public class FlingballServer {
 							this.boards.put(name, ConcurrentHashMap.newKeySet());
 							this.outputStreams.put(name, out);
 						}
-//						out.close();
-//						in.close();
 						break;
 					}
 				}
@@ -131,10 +121,19 @@ public class FlingballServer {
 					try {
 						// handle the client
 						try {
-							handleConnection(s, name);
+							handleConnection(s, name, in, out);
 						} catch (IOException ioe) {
+							System.out.println("Connection Lost for" + name);
 							ioe.printStackTrace(); // but do not stop serving
-						} finally {
+						}
+						finally {
+							this.boards.remove(name);
+							for (Border border : this.neighbors.get(name).keySet()) {
+								out.println("DISJOIN " + border);
+								this.outputStreams.get(this.neighbors.get(name).get(border)).println("DISJOIN " +  border.complement());;
+							}
+							this.outputStreams.remove(name);
+							this.neighbors.remove(name);
 							s.close();
 						}
 					} catch (IOException e) {
@@ -156,12 +155,10 @@ public class FlingballServer {
      * @param clientID ID of the client being handled
      * @throws IOException if the connection encounters an error or closes unexpectedly
      */
-    private void handleConnection(Socket socket, String clientID) throws IOException{
-    	 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-         PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+    private void handleConnection(Socket socket, String clientID, BufferedReader in, PrintWriter out) throws IOException{
          try {
 	    	for (String input = in.readLine(); input != null; input = in.readLine()) {
-	    		System.out.println("Received a command " + input);
+	    		System.out.println("handleConnection Received a client request " + input);
 	        	try {
 	        		String output = handleRequest(input, String.valueOf(clientID));
 	        		if (output.equals("QUIT")) {
@@ -175,7 +172,6 @@ public class FlingballServer {
 	        		// sends a response. 
 	        		// Sends updates to boards connected to the server if the above request warrants a change to 
 	        		// a different board. (i.e. if two boards are joined or a ball is teleported. 
-	        		System.out.print("Checking for board updates");
 	        		for (String board : this.outputStreams.keySet()) {
 	        			PrintWriter boardOut = this.outputStreams.get(board);
 	        			for (String response : this.boards.get(board)) {
@@ -316,9 +312,6 @@ public class FlingballServer {
 			 String vy = tokens[4];
 			 
 			 this.boards.get(targetBoard).add("TELEPORT " + target + " " + ball + " " + vx + " " + vy);
-			 
-			 
-    		 
     	 }
     	 else if (tokens[0].equals("START")) {
     		 this.boards.get(id).add("READY");

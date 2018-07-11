@@ -5,15 +5,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.stream.Stream;
 import org.apache.commons.cli.*;
 
 import edu.mit.eecs.parserlib.UnableToParseException;
-import flingball.gadgets.Portal;
 
 /**
  * TODO: put documentation for your class here
@@ -44,7 +43,6 @@ public class Flingball {
     	CommandLine cmd;
     	
     	final int prt;
-    	final String hst;
     	final String file;
     	
     	try {
@@ -65,84 +63,18 @@ public class Flingball {
     		
     		// Create the flingball board and start to play. 
     		try {
-    			Path filePath = Paths.get(file);
-    			Stream<String> fileIn = Files.lines(filePath);
-    			StringBuilder boardFile = new StringBuilder();
-    			fileIn.forEach(s -> boardFile.append(s+"\n"));
-    			fileIn.close();
-    			System.out.println("Input: \n" + boardFile);
-    			final Board board = BoardParser.parse(boardFile.toString());
-    			// Connect the portals on the board and acquire any portals connected to other boards. 
-    			final List<String> portalsToConnect = board.connectPortals();
+    			Board board = readFile(file);
     		
-	    		// Check if a host address was provided. If not, flingball is played in single player.
-	    		if (cmd.hasOption("host")) {
-	    			hst = cmd.getOptionValue("host");
-	    			Socket socket = new Socket(hst, prt);
-	    			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-	    			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-	    			BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
-	    			
-	    			
-	    			// Add a listener for sending requests to the server when the board changes. For example, 
-	    			// if a ball moves to another board. 
-	    			board.addRequestListener(new RequestListener() {
-	    				
-	    				@Override
-	    				public void onRequest(String request) {
-	    					System.out.println("Sending request to server: " + request);
-	    					out.println(request);
-	    				}
-	    			});
-	    			
-	    			// Start a separate thread to listen for command line inputs. Users may use command line
-	    			// inputs to join their board to another. 
-	    			new Thread(() ->  {
-	    				try {
-	    					for (String command = stdIn.readLine(); command != null; command = stdIn.readLine()) {
-	    						System.out.println("sending command line input to server" + command);
-	    						out.println(command);
-	    					}
-	    				} catch (IOException e) {
-	    					// TODO Auto-generated catch block
-	    					e.printStackTrace();
-	    				} 
-	    			}).start();
-	    			
-	    			
-	    			// Listen for server responses and send them to the board for processing
-	    			try {
-	    				for (String response = in.readLine(); response != null; response = in.readLine()) {
-	    					System.out.println("received a server request " + response );
-	    					if (response.equals("NAME?")) {
-	    						out.println("NAME " + board.NAME);
-	    						
-	    						// Connect portal to portals on other boards. 
-	    						for (String portalConnection : portalsToConnect) {
-	    							out.println(portalConnection);
-	    						}
-	    						System.out.println("Sending start");
-	    						out.println("START");
-	    					}
-    						else if (response.equals("READY")) {
-    							//Start the game
-    							new BoardAnimation(board);
-    						}
-	    					else if (response.split(" ")[0].equals("ERROR:")) {
-	    						System.out.println(response);
-	    						System.exit(1);
-	    					}
-	    					else {
-	    						board.handleResponse(response);
-	    					}
-	    				}
-	    				
-	    			} catch (IOException e) {
-	    				// TODO Auto-generated catch block
-	    				e.printStackTrace();
-	    			} 
-	    			
+    			if (cmd.hasOption("host")) {
+    				try {
+    					connect(board, prt, cmd.getOptionValue("host"));
+    				} catch (IOException ioe) {
+    					System.out.println("Server Connection interupted");
+    					System.exit(1);
+    				} 
+    				
 	    		} else {
+	    			board.connectPortals();
 	    			new BoardAnimation(board);
 	    		}
     		
@@ -162,6 +94,81 @@ public class Flingball {
 			
 	}
     
+    private static Board readFile(String file) throws IOException, UnableToParseException{
+			Path filePath = Paths.get(file);
+			Stream<String> fileIn = Files.lines(filePath);
+			StringBuilder boardFile = new StringBuilder();
+			fileIn.forEach(s -> boardFile.append(s + "\n"));
+			fileIn.close();
+			System.out.println("Input: \n" + boardFile);
+			final Board board = BoardParser.parse(boardFile.toString());
+			return board;
+    }
     
+    
+    private static void connect(Board board, final int prt, String hostAdress) throws UnknownHostException, IOException {
+		Socket socket = new Socket(hostAdress, prt);
+		PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+		BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+		BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
+		
+		
+		// Add a listener for sending requests to the server when the board changes. For example, 
+		// if a ball moves to another board. 
+		board.addRequestListener(new RequestListener() {
+			@Override
+			public void onRequest(String request) {
+				out.println(request);
+			}
+		});
+		
+		// Start a separate thread to listen for command line inputs. Users may use command line
+		// inputs to join their board to another. 
+		new Thread(() ->  {
+			try {
+				for (String command = stdIn.readLine(); command != null; command = stdIn.readLine()) {
+					System.out.println("sending command line input to server" + command);
+					out.println(command);
+				}
+			} catch (IOException e) {
+				//Do not stop listening
+				e.printStackTrace();
+			} 
+		}).start();
+		
+		
+		// Listen for server responses and send them to the board for processing
+		try {
+			for (String response = in.readLine(); response != null; response = in.readLine()) {
+				if (response.equals("NAME?")) {
+					out.println("NAME " + board.NAME);
+					
+					// Connect portal to portals on other boards. 
+					for (String portalConnection : board.connectPortals()) {
+						out.println(portalConnection);
+					}
+					out.println("START");
+				}
+				else if (response.equals("READY")) {
+					//Start the game
+						new BoardAnimation(board);
+					
+				}
+				else if (response.split(" ")[0].equals("ERROR:")) {
+					System.out.println(response);
+					System.exit(1);
+				}
+				else {
+					board.handleResponse(response);
+				}
+			}
+			
+		} catch (IOException e) {
+			// Do not stop listening
+			e.printStackTrace();
+		}  finally {
+			socket.close();
+		}
+    }
     
 }
