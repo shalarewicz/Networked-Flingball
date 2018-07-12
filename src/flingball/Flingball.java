@@ -110,7 +110,7 @@ public class Flingball {
 		Socket socket = new Socket(hostAdress, prt);
 		PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 		BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-		BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
+		
 		
 		
 		// Add a listener for sending requests to the server when the board changes. For example, 
@@ -122,20 +122,24 @@ public class Flingball {
 			}
 		});
 		
-		// Start a separate thread to listen for command line inputs. Users may use command line
-		// inputs to join their board to another. 
+		// Listen to command line input for h and v join commands. 
 		new Thread(() ->  {
 			try {
+				BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 				for (String command = stdIn.readLine(); command != null; command = stdIn.readLine()) {
-					System.out.println("sending command line input to server" + command);
-					out.println(command);
+					String join = command.split(" ")[0];
+					if (join.equals("v") || join.equals("h")) {
+						out.println(command);
+					} else {
+						System.err.println("'" + join + "' is not a valid command.");
+					}
+						
 				}
 			} catch (IOException e) {
 				//Do not stop listening
 				e.printStackTrace();
 			} 
 		}).start();
-		
 		
 		// Listen for server responses and send them to the board for processing
 		try {

@@ -109,14 +109,12 @@ public class Board extends JPanel{
 	 */
 	
 	private void checkRep() {
-		//TODO 
 		Set<Vect> positions = new HashSet<Vect>();
 		Set<String> names = new HashSet<String>();
 		for (Gadget gadget : gadgets) {
 			final Vect position = gadget.position();
 			assert positions.add(position) : "Duplicate gadget positon: " + gadget;
 			
-			//TODO Ballsdoin't have to be entirely on the board if the board is connected. 
 			assert position.x() >= 0 : "x < 0: " + gadget;
 			assert position.y() >= 0 : "y < 0: " + gadget;
 			
@@ -129,14 +127,13 @@ public class Board extends JPanel{
 		}
 		
 		for (Ball ball : balls) {
+			//TODO This isn't a necessary check and will crash the game if another player uses a ball with the same name
 			assert names.add(ball.name()) : "Dublicate name - ball: " + ball + " on board " + this.NAME;
 			final Vect position = ball.getAnchor();
 			
 			assert position.x() >= 0 : "x < 0: " + ball;
 			assert position.y() >= 0 : "y < 0: " + ball;
 			
-			//TODO Decide on how balls should be moved to other boards. Either a jump or smooth transition
-			// checkRep would need to allow a ball simultaneously on two boards. 
 			assert position.x() + ball.getRadius() * 2 <= WIDTH : "x + WIDTH > " + WIDTH + ": " + ball;
 			assert position.y() + ball.getRadius() * 2 <= HEIGHT : "x + HEIGHT > " + HEIGHT + ": " + ball;
 		}
@@ -162,39 +159,6 @@ public class Board extends JPanel{
 				assert gadgets.contains(actionGadget) : "Key Triggered gadget not in gadgets" + actionGadget;
 			}
 		}
-		
-		
-		//TODO This should become part of FlingballServers checkRep() to check for symmetric connections. 
-//		for (Wall wall : neighbors.keySet()) {
-//			
-//		//	assert neighbors.get(wall).neighbors : "Connection not symmetric" + this.NAME + neighbor.NAME;
-//			
-//			Map<String, String> connections = new HashMap<String, String>();
-//			
-//			for (Wall connectedWall : this.neighbors.get(wall).neighbors.keySet()) {
-//				connections.put(connectedWall.name(), this.neighbors.get(wall).neighbors.get(connectedWall).NAME);
-//			}
-//			
-//			// Checks for a symmetric connection. 
-//			switch (wall.name()) {
-//			case "TOP":
-//				// If this board is connected to the neighboring board at the top then the neighboring board
-//				// must be connected to this board at the bottom
-//				assert connections.containsKey("BOTTOM") && connections.get("BOTTOM").equals(this.NAME);
-//				break;
-//			case "BOTTOM":
-//				assert connections.containsKey("TOP") && connections.get("TOP").equals(this.NAME);
-//				break;
-//			case "LEFT":
-//				assert connections.containsKey("RIGHT") && connections.get("RIGHT").equals(this.NAME);
-//				break;
-//			case "RIGHT":
-//				assert connections.containsKey("LEFT") && connections.get("LEFT").equals(this.NAME);
-//				break;
-//			default:
-//				break;
-//			}
-//		}
 	}
 	
 	// Default Values
@@ -986,6 +950,12 @@ public class Board extends JPanel{
 		 case "CONNECT": {
 			 String portal = tokens[1];
 			 this.getPortal(portal).connect();
+			 break;
+		 }
+		 
+		 case "DISCONNECT": {
+			 String portal = tokens[1];
+			 this.getPortal(portal).disconnect();
 			 break;
 		 }
 		 

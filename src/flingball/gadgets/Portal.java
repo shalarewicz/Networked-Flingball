@@ -217,10 +217,18 @@ public class Portal implements Gadget {
 	}
 	
 	/**
-	 * Connects a portal
+	 * Connects the portal
 	 */
 	public void connect() {
 		this.connected = true;
+	}
+	
+	/*
+	 * Disconnects the portal
+	 */
+	public void disconnect() {
+		this.connected = false;
+		this.target = this.portal.getCenter();
 	}
 	
 	@Override
