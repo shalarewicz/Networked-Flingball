@@ -12,31 +12,31 @@ import physics.Circle;
 import physics.Physics;
 import physics.Vect;
 
+/**
+ * A gadget which can be used on a flingball board. A left flipper has size 1 L x 2 L. 
+ * a Left Flippers action rotates the flipper about it's pivot point which is in the 
+ * northwest corner by default. The opposite end of the flipper is in the southwest
+ * corner. A flipper is bound by a box of size 2L x 2L and does not cross the boundary 
+ * of this box at any point. The anchor of a left flipper is found in the upper left-hand 
+ * corner of it's bounding box. 
+ * 
+ * A left flipper's action alternates between rotating the flipper 90 degrees in the
+ * counterclockwise direction and 90 degrees in the clockwise direction about it's pivot. 
+ * During this time a flipper rotates at a speed of 1080 degrees per second. During rotation
+ * the rotation cannot switch directions. Furthermore, any action taken on flipper during its 
+ * rotation has no effect. If a ball impacts a flipper during its rotation there the speed of 
+ * rotation remains constant.  
+ * 
+ * A left flipper has a default coefficient of reflection of 0.95. However, if a ball collides
+ * with the flipper during its rotation the linear velocity of the flipper is taken into account.
+ * 
+ * A left flipper's orientation can be set in 90 degree intervals therefore a left flipper with 
+ * an orientation of 270 degrees would place the pivot in the southwest corner and the opposite 
+ * end int the southeast corner with rotation moving the end to the northwest corner. 
+ *
+ * 
+ */
 public class LeftFlipper implements Bumper {
-	/**
-	 * A gadget which can be used on a flingball board. A left flipper has size 1 L x 2 L. 
-	 * a Left Flippers action rotates the flipper about it's pivot point which is in the 
-	 * northwest corner by default. The opposite end of the flipper is in the southwest
-	 * corner. A flipper is bound by a box of size 2L x 2L and does not cross the boundary 
-	 * of this box at any point. The anchor of a left flipper is found in the upper left-hand 
-	 * corner of it's bounding box. 
-	 * 
-	 * A left flipper's action alternates between rotating the flipper 90 degrees in the
-	 * counterclockwise direction and 90 degrees in the clockwise direction about it's pivot. 
-	 * During this time a flipper rotates at a speed of 1080 degrees per second. During rotation
-	 * the rotation cannot switch directions. Furthermore, any action taken on flipper during its 
-	 * rotation has no effect. If a ball impacts a flipper during its rotation there the speed of 
-	 * rotation remains constant.  
-	 * 
-	 * A left flipper has a default coefficient of reflection of 0.95. However, if a ball collides
-	 * with the flipper during its rotation the linear velocity of the flipper is taken into account.
-	 * 
-	 * A left flipper's orientation can be set in 90 degree intervals therefore a left flipper with 
-	 * an orientation of 270 degrees would place the pivot in the southwest corner and the opposite 
-	 * end int the southeast corner with rotation moving the end to the northwest corner. 
-	 *
-	 * 
-	 */
 	
 	
 	private final int x, y;
@@ -48,7 +48,7 @@ public class LeftFlipper implements Bumper {
 	private Wall port, starboard;
 	
 	
-	private final int angularVelocity = 1080;
+	private final static int OMEGA = 1080;
 	private boolean rotating = false;
 	private boolean rotated = false;
 	private Angle degreesRotated = Angle.ZERO;
@@ -56,7 +56,6 @@ public class LeftFlipper implements Bumper {
 	private final static double RADIUS = 0.25;
 	private final static int HEIGHT = 2;
 	private final static int WIDTH = 2;
-	
 	
 	/*
 	 * AF(name, x, y, pivot, tail, port starboard) ::= A flipper called name with anchor (x,-y) and an 
@@ -176,6 +175,7 @@ public class LeftFlipper implements Bumper {
 			throw new RuntimeException("Should never get here. Invalid LeftFlipper Orientation");
 		}
 		}
+		
 		this.checkRep();
 	}
 	
@@ -228,26 +228,26 @@ public class LeftFlipper implements Bumper {
 	@Override
 	public double collisionTime(Ball ball) {
 		double collisionTime = ball.timeUntilCircleCollision(this.pivot);
-		if (this.rotating && !this.rotated) {
-			//Clockwise rotation from default orientation to rotated orientation
-			collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), this.angularVelocity), collisionTime);
-			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity), collisionTime);
-			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity),collisionTime);
-			
-		} else if (this.rotating) {
-			//Counterclockwise rotation from rotated orientation to starting orientation
-			collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), -angularVelocity), collisionTime);
-			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), -angularVelocity), collisionTime);
-			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), -angularVelocity),collisionTime);
-			
-		} else {
-			//No rotation
-			collisionTime = Math.min(ball.timeUntilCircleCollision(tail), collisionTime);
-			collisionTime =  Math.min(this.port.collisionTime(ball), collisionTime);
-			collisionTime = Math.min(this.starboard.collisionTime(ball), collisionTime);
+		int omega = OMEGA;
+		
+		synchronized (this) {
+			if (this.rotated) {
+				// Clockwise rotation from rotated orientation to default orientation
+				omega *= -1;
+			}
+			if (this.rotating ) {
+				collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), omega), collisionTime);
+				collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), omega), collisionTime);
+				collisionTime = Math.min(this.starboard.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), omega),collisionTime);
+			} else {
+				collisionTime = Math.min(ball.timeUntilCircleCollision(tail), collisionTime);
+				collisionTime = Math.min(this.port.collisionTime(ball), collisionTime);
+				collisionTime = Math.min(this.starboard.collisionTime(ball), collisionTime);
+			}
+			return collisionTime;
 		}
-		return collisionTime;
 	}
+	
 
 	@Override
 	public void reflectBall(Ball ball) {
@@ -257,43 +257,44 @@ public class LeftFlipper implements Bumper {
 			return;
 		}
 		
-		// TODO Should probably go with whatever wall has the smallest collision time. 
-		if (this.rotating && !this.rotated) {
-			//Counterclockwise rotation from default orientation to rotated orientation
-			if (collisionTime == ball.timeUntilRoatatingCircleCollision(tail, pivot.getCenter(), angularVelocity)) {
-				ball.reflectRotatingCircle(this.tail, this.pivot.getCenter(), angularVelocity, reflectionCoeff);
-			} else if (collisionTime == this.port.timeUntilRotatingWallCollision(ball, pivot.getCenter(), angularVelocity)) {
-				this.port.reflectBallRotating(ball, this.pivot.getCenter(), angularVelocity, reflectionCoeff);
-			} else if (collisionTime == this.starboard.timeUntilRotatingWallCollision(ball, pivot.getCenter(), angularVelocity)) {
-				this.starboard.reflectBallRotating(ball, this.pivot.getCenter(), angularVelocity, reflectionCoeff);
-			} else {
-				throw new RuntimeException("Rotating LeftFlipper counterclockwise reflection should never get here");
+		
+		synchronized (this) {
+			int omega = OMEGA;
+			if (this.rotated) {
+				//Clockwise rotation from default orientation to rotated orientation
+				omega *= -1;
 			}
-			
-		} else if (this.rotating) {
-			//Clockwise rotation from default orientation to rotated orientation
-			if (collisionTime == ball.timeUntilRoatatingCircleCollision(tail, pivot.getCenter(), -angularVelocity)) {
-				ball.reflectRotatingCircle(tail, pivot.getCenter(), -angularVelocity, reflectionCoeff);
-			} else if (collisionTime == port.timeUntilRotatingWallCollision(ball, pivot.getCenter(), -angularVelocity)) {
-				this.port.reflectBallRotating(ball, pivot.getCenter(), -angularVelocity, reflectionCoeff);
-			} else if (collisionTime == starboard.timeUntilRotatingWallCollision(ball, pivot.getCenter(), -angularVelocity)) {
-				this.starboard.reflectBallRotating(ball, pivot.getCenter(), -angularVelocity, reflectionCoeff);
+			if (this.rotating) {
+				final double tailRotating = ball.timeUntilRoatatingCircleCollision(tail, pivot.getCenter(), omega);
+				final double portRotating = this.port.timeUntilRotatingWallCollision(ball, pivot.getCenter(), omega);
+				final double starRotating = this.starboard.timeUntilRotatingWallCollision(ball, pivot.getCenter(), omega);
+				
+				// Use the minimum as collisionTime does not account for the effects of gravity and friction
+				final double minRotating = Math.min(tailRotating, Math.min(portRotating, starRotating));
+				// TODO Ball still can get trapped in the flipper
+				if (tailRotating == minRotating && !this.ballOverlap(ball)) {
+					ball.reflectRotatingCircle(tail, pivot.getCenter(), omega, reflectionCoeff);
+				} else if (portRotating == minRotating) {
+					this.port.reflectBallRotating(ball, pivot.getCenter(), omega, reflectionCoeff);
+				} else {
+					this.starboard.reflectBallRotating(ball, pivot.getCenter(), omega, reflectionCoeff);
+				}
+				
 			} else {
-				throw new RuntimeException("Rotating LeftFlipper clockwise reflection should never get here");
+				final double tailCollision = ball.timeUntilCircleCollision(tail);
+				final double portCollision = this.port.collisionTime(ball);
+				final double starCollision = this.starboard.collisionTime(ball);
+				
+				final double min = Math.min(tailCollision, Math.min(starCollision, portCollision));
+				if (min == tailCollision) {
+					ball.reflectCircle(tail);
+				} else if (min == portCollision) {
+					this.port.reflectBall(ball);
+				} else {
+					this.starboard.reflectBall(ball);
+				} 
+				
 			}
-		}
-		else {
-			// Flipper is not rotating
-			if (collisionTime == ball.timeUntilCircleCollision(tail)) {
-				ball.reflectCircle(this.tail);
-			} else if (collisionTime == this.port.collisionTime(ball)){
-				this.port.reflectBall(ball);
-			} else if (collisionTime == this.starboard.collisionTime(ball)){
-				this.starboard.reflectBall(ball);
-			} else {
-				throw new RuntimeException("LeftFlipper " + name + " reflection should never get here");
-			}
-			
 		}
 
 	}
@@ -314,7 +315,7 @@ public class LeftFlipper implements Bumper {
 		new Thread(() ->  {
 			if (!this.rotating) {
 				this.rotating = true;
-				Angle degreeIncrement = new Angle(Math.PI / 180 * this.angularVelocity * BoardAnimation.FRAME_RATE / 1000); 
+				Angle degreeIncrement = new Angle(Math.PI / 180 * OMEGA * BoardAnimation.FRAME_RATE / 1000); 
 				Angle totalRotationAngle = Angle.DEG_90;
 				
 				if (this.rotated) {
@@ -326,13 +327,15 @@ public class LeftFlipper implements Bumper {
 				final Wall finalStarboard = this.starboard.rotateAround(this.pivot.getCenter(), totalRotationAngle);
 				
 				while (true) {
-					if (degreesRotated.plus(degreeIncrement).compareTo(Angle.RAD_PI_OVER_TWO) >= 0) {
-						this.tail = finalTail;
-						this.port = finalPort;
-						this.starboard = finalStarboard;
-						this.rotated = !this.rotated;
-						this.rotating = false;
-						//TODO reset degrees rotated to zero?
+					if (Math.abs(degreesRotated.plus(degreeIncrement).radians()) >= Angle.RAD_PI_OVER_TWO.radians()) {
+						synchronized (this) {
+							this.tail = finalTail;
+							this.port = finalPort;
+							this.starboard = finalStarboard;
+							this.rotated = !this.rotated;
+							this.rotating = false;
+							this.degreesRotated = Angle.ZERO;
+						}
 						break;
 					} else {
 						this.rotate(degreeIncrement);
@@ -353,13 +356,14 @@ public class LeftFlipper implements Bumper {
 	 * in alternating counterclockwise and clockwise directions. 
 	 * @param angle by which the flipper is rotated
 	 */
-	private void rotate(Angle angle) {
-			// Rotate counterclockwise
+	public void rotate(Angle angle) {
+		synchronized (this) {
 			this.tail = Physics.rotateAround(this.tail, this.pivot.getCenter(), angle);
 			this.port = port.rotateAround(this.pivot.getCenter(), angle);
 			this.starboard = starboard.rotateAround(this.pivot.getCenter(), angle);
 			this.degreesRotated = this.degreesRotated.plus(angle);
 			checkRep();
+		}
 			
 	}
 
@@ -434,4 +438,6 @@ public class LeftFlipper implements Bumper {
 				this.y == that.y &&
 				this.orientation == that.orientation;
 	}
+	
+	
 }

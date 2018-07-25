@@ -3,6 +3,10 @@ package flingball.gadgets;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import flingball.Ball;
 import flingball.BoardAnimation;
@@ -44,8 +48,10 @@ public class RightFlipper implements Bumper {
 	private Circle pivot, tail;
 	private Wall port, starboard;
 	
+	private ConcurrentMap<String, String> nextCollision = new ConcurrentHashMap<String, String>();
 	
-	private final int angularVelocity = 1080;
+	
+	private final static int OMEGA = 1080;
 	private boolean rotating = false;
 	private boolean rotated = false;
 	private Angle degreesRotated = Angle.ZERO;
@@ -53,6 +59,7 @@ public class RightFlipper implements Bumper {
 	private final static double RADIUS = 0.25;
 	private final static int HEIGHT = 2;
 	private final static int WIDTH = 2;
+	
 	
 	/*
 	 * AF(name, x, y, pivot, tail, port starboard) ::= A flipper called name with anchor (x,-y) and an 
@@ -75,7 +82,7 @@ public class RightFlipper implements Bumper {
 	 * 		TODO
 	 * 
 	 * Thread Safety Argument
-	 * 		TODO Immutable	
+	 * 		TODO	
 	 */
 	
 	private void checkRep() {
@@ -167,6 +174,7 @@ public class RightFlipper implements Bumper {
 		}
 		
 		}
+		
 		checkRep();
 		
 	}
@@ -218,73 +226,104 @@ public class RightFlipper implements Bumper {
 
 	@Override
 	public double collisionTime(Ball ball) {
-		double collisionTime = ball.timeUntilCircleCollision(this.pivot);
-		if (this.rotating && !this.rotated) {
-			//Clockwise rotation from default orientation to rotated orientation
-			collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), -angularVelocity), collisionTime);
-			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), -angularVelocity), collisionTime);
-			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), -angularVelocity),collisionTime);
+		
+		double collisionTime = Double.POSITIVE_INFINITY;
+		
+		Map<Double, String> collisionTimes = new HashMap<Double, String>();
+		
+		collisionTimes.put(ball.timeUntilCircleCollision(this.pivot), "PIVOT");
+		
+		int angularVelocity = OMEGA;
+		synchronized (this) {
+			if (!this.rotated) {
+				// Clockwise rotation from default orientation to rotated orientation
+				angularVelocity *= -1;
+			}
+			if (this.rotating) {
+				collisionTimes.put(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), angularVelocity), "TAIL");
+				collisionTimes.put(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity), "PORT");
+				collisionTimes.put(this.starboard.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity), "STARBOARD");
+				
+				
+//				collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), angularVelocity), collisionTime);
+//				collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity), collisionTime);
+//				collisionTime = Math.min(this.starboard.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity),collisionTime);
+			} else {
+				collisionTimes.put(ball.timeUntilCircleCollision(tail), "TAIL");
+				collisionTimes.put(this.port.collisionTime(ball), "PORT");
+				collisionTimes.put(this.starboard.collisionTime(ball), "STARBOARD");
+//				collisionTime = Math.min(ball.timeUntilCircleCollision(tail), collisionTime);
+//				collisionTime =  Math.min(this.port.collisionTime(ball), collisionTime);
+//				collisionTime = Math.min(this.starboard.collisionTime(ball), collisionTime);
+			}
 			
-		} else if (this.rotating) {
-			//Clockwise rotation from default orientation to rotated orientation
-			collisionTime = Math.min(ball.timeUntilRoatatingCircleCollision(this.tail, this.pivot.getCenter(), angularVelocity), collisionTime);
-			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity), collisionTime);
-			collisionTime = Math.min(this.port.timeUntilRotatingWallCollision(ball, this.pivot.getCenter(), angularVelocity),collisionTime);
-			
-		} else {
-			//No rotation
-			collisionTime = Math.min(ball.timeUntilCircleCollision(tail), collisionTime);
-			collisionTime =  Math.min(this.port.collisionTime(ball), collisionTime);
-			collisionTime = Math.min(this.starboard.collisionTime(ball), collisionTime);
+			for (double time : collisionTimes.keySet()) {
+				if (time < collisionTime) {
+					collisionTime = time;
+					nextCollision.put(ball.name(), collisionTimes.get(time));
+				}
+			}
+			return collisionTime;
 		}
-		return collisionTime;
 	}
 
+//	private boolean pointInside(Vect point) {
+//		Circle middle = new Circle(
+//				new Vect((this.tail.getCenter().x() + this.pivot.getCenter().y()) / 2, 
+//						(this.tail.getCenter().y() + this.pivot.getCenter().y()) / 2)
+//				, 1);
+//		return this.pivot.toEllipse2D().contains(point.toPoint2D()) &&
+//				this.tail.toEllipse2D().contains(point.toPoint2D()) && 
+//				middle.toEllipse2D().contains(point.toPoint2D());
+//	}
 	@Override
 	public void reflectBall(Ball ball) {
-		double collisionTime = this.collisionTime(ball);
-		if (collisionTime == ball.timeUntilCircleCollision(this.pivot)) {
-			ball.reflectCircle(this.pivot);
-			return;
-		}
-		
-		// TODO Should probably go with whatever wall has the smallest collision time. 
-		if (this.rotating && !this.rotated) {
-			//Clockwise rotation from default orientation to rotated orientation
-			if (collisionTime == ball.timeUntilRoatatingCircleCollision(tail, pivot.getCenter(), -angularVelocity)) {
-				ball.reflectRotatingCircle(tail, pivot.getCenter(), -angularVelocity, reflectionCoeff);
-			} else if (collisionTime == port.timeUntilRotatingWallCollision(ball, pivot.getCenter(), -angularVelocity)) {
-				this.port.reflectBallRotating(ball, pivot.getCenter(), -angularVelocity, reflectionCoeff);
-			} else if (collisionTime == starboard.timeUntilRotatingWallCollision(ball, pivot.getCenter(), -angularVelocity)) {
-				this.starboard.reflectBallRotating(ball, pivot.getCenter(), -angularVelocity, reflectionCoeff);
-			} else {
-				throw new RuntimeException("Rotating RightFlipper counterclockwise reflection should never get here");
-			}
+		synchronized (this) {
+			try {
+				if (nextCollision.get(ball.name()).equals("PIVOT")) {
+					ball.reflectCircle(this.pivot);
+					return;
+				}
 			
-		} else if (this.rotating) {
-			//Counterclockwise rotation from default orientation to rotated orientation
-			if (collisionTime == ball.timeUntilRoatatingCircleCollision(tail, pivot.getCenter(), angularVelocity)) {
-				ball.reflectRotatingCircle(tail, pivot.getCenter(), angularVelocity, reflectionCoeff);
-			} else if (collisionTime == port.timeUntilRotatingWallCollision(ball, pivot.getCenter(), angularVelocity)) {
-				this.port.reflectBallRotating(ball, pivot.getCenter(), angularVelocity, reflectionCoeff);
-			} else if (collisionTime == starboard.timeUntilRotatingWallCollision(ball, pivot.getCenter(), angularVelocity)) {
-				this.starboard.reflectBallRotating(ball, pivot.getCenter(), angularVelocity, reflectionCoeff);
-			} else {
-				throw new RuntimeException("Rotating RightFlipper clockwise reflection should never get here");
+			int omega = OMEGA;
+			if (!this.rotated) {
+				//Clockwise rotation from default orientation to rotated orientation
+				omega *= -1;
 			}
-		}
-		else {
-			// Flipper is not rotating
-			if (collisionTime == ball.timeUntilCircleCollision(tail)) {
-				ball.reflectCircle(tail);
-			} else if (collisionTime == port.collisionTime(ball)){
-				this.port.reflectBall(ball);
-			} else if (collisionTime == starboard.collisionTime(ball)){
-				this.starboard.reflectBall(ball);
-			} else {
-				throw new RuntimeException("RightFlipper " + name + " reflection should never get here");
+			if (this.rotating) {
+				switch (nextCollision.get(ball.name())) {
+				case "PORT":
+					this.port.reflectBallRotating(ball, pivot.getCenter(), omega, reflectionCoeff);
+					break;
+				case "STARBOARD":
+					this.starboard.reflectBallRotating(ball, pivot.getCenter(), omega, reflectionCoeff);
+					break;
+				case "TAIL":
+					ball.reflectRotatingCircle(tail, pivot.getCenter(), omega, reflectionCoeff);
+					break;
+				default:
+					throw new RuntimeException("should never get here co collision right flipper");
+				}
 			}
-			
+			else {
+				switch (nextCollision.get(ball.name())) {
+				case "PORT":
+					this.port.reflectBall(ball);
+					break;
+				case "STARBOARD":
+					this.starboard.reflectBall(ball);
+					break;
+				case "TAIL":
+					ball.reflectCircle(tail);
+					break;
+				default:
+					throw new RuntimeException("should never get here co collision right flipper");
+				}
+			}
+			}
+			catch (NullPointerException e) {
+				throw new RuntimeException("No Gadget for ball: " + ball.name());
+			}
 		}
 
 	}
@@ -298,13 +337,15 @@ public class RightFlipper implements Bumper {
 	public void setTrigger(String trigger) {
 		this.trigger = trigger;
 	}
+	
+	
 	@Override
 	public void takeAction() {
 		if (this.rotating) return; 
 		new Thread(() ->  {
 			if (!this.rotating) {
 				this.rotating = true;
-				Angle degreeIncrement = new Angle(Math.PI / 180 * this.angularVelocity * BoardAnimation.FRAME_RATE / 1000); 
+				Angle degreeIncrement = new Angle(Math.PI / 180 * OMEGA * BoardAnimation.FRAME_RATE / 1000); 
 				Angle totalRotationAngle = Angle.DEG_90;
 				
 				if (!this.rotated) {
@@ -316,13 +357,15 @@ public class RightFlipper implements Bumper {
 				final Wall finalStarboard = this.starboard.rotateAround(this.pivot.getCenter(), totalRotationAngle);
 				
 				while (true) {
-					if (degreesRotated.plus(degreeIncrement).compareTo(Angle.RAD_PI_OVER_TWO) >= 0) {
-						this.tail = finalTail;
-						this.port = finalPort;
-						this.starboard = finalStarboard;
-						this.rotated = !this.rotated;
-						this.rotating = false;
-						//TODO reset degrees rotated to zero?
+					if (Math.abs(degreesRotated.plus(degreeIncrement).radians()) >= Angle.RAD_PI_OVER_TWO.radians()) {
+						synchronized (this) {	
+							this.tail = finalTail;
+							this.port = finalPort;
+							this.starboard = finalStarboard;
+							this.rotated = !this.rotated;
+							this.rotating = false;
+							this.degreesRotated = Angle.ZERO;
+						}
 						break;
 					} else {
 						this.rotate(degreeIncrement);
@@ -339,26 +382,49 @@ public class RightFlipper implements Bumper {
 	}
 	
 	/**
-	 * Rotates at a constant angular velocity of 1080 degrees per second to a position 90 degrees away from its starting position 
-	 * in alternating counterclockwise and clockwise directions. 
+	 * Rotates at a the flipper through the specified angle at a constant angular velocity of 1080 degrees 
+	 * Does not check for collisions. 
 	 * @param angle by which the flipper is rotated
 	 */
-	private void rotate(Angle angle) {
-			// Rotate counterclockwise
+	public void rotate(Angle angle) {
+		synchronized (this) {
+			//TODO Check for a ball collision. The flipper rotates toO fast and will move on top of the 
+			// ball thus trapping the ball
 			this.tail = Physics.rotateAround(this.tail, this.pivot.getCenter(), angle);
 			this.port = port.rotateAround(this.pivot.getCenter(), angle);
 			this.starboard = starboard.rotateAround(this.pivot.getCenter(), angle);
 			this.degreesRotated = this.degreesRotated.plus(angle);
 			checkRep();
+		}
+	}
+	
+	/**
+	 * Rotates the flipper for the specified amount of time. 
+	 * Does not perform any collisions. 
+	 * @param time
+	 */
+	public void rotate(double time) {
+		synchronized (this) {
+			Angle angle = new Angle(time * Math.PI / 180 * OMEGA);
+			if (!this.rotated) {
+				angle = Angle.DEG_180.plus(Angle.DEG_180).minus(angle);
+			}
 			
+			this.tail = Physics.rotateAround(this.tail, this.pivot.getCenter(), angle);
+			this.port = port.rotateAround(this.pivot.getCenter(), angle);
+			this.starboard = starboard.rotateAround(this.pivot.getCenter(), angle);
+			this.degreesRotated = this.degreesRotated.plus(angle);
+			checkRep();
+		}
 	}
 
 	
 
 	@Override
 	public boolean ballOverlap(Ball ball) {
-		return Physics.distanceSquared(ball.getCartesianCenter(), this.tail.getCenter()) >= ball.getRadius() &&
-			   Physics.distanceSquared(ball.getCartesianCenter(), this.pivot.getCenter()) >= ball.getRadius();
+		return Math.sqrt(Physics.distanceSquared(ball.getCartesianCenter(), this.tail.getCenter())) >= ball.getRadius() &&
+			   Math.sqrt(Physics.distanceSquared(ball.getCartesianCenter(), this.pivot.getCenter())) >= ball.getRadius() &&
+			   this.starboard.ballOverlap(ball) && this.port.ballOverlap(ball);
 	}
 
 	@Override
@@ -425,5 +491,5 @@ public class RightFlipper implements Bumper {
 				this.y == that.y &&
 				this.orientation == that.orientation;
 	}
-
+	
 }

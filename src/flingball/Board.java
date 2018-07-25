@@ -5,12 +5,8 @@ import java.awt.Graphics;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.ImageObserver;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,140 +23,72 @@ import flingball.gadgets.*;
 import physics.Physics;
 import physics.Vect;
 
+/**
+ * A board on which the game flingball can be played. Objects which can be 
+ * played on a flingball board include balls and gadgets. A gadget is any object 
+ * that implements the the Gadget interface (including Square, Triangle and
+ * Circle Bumpers, Absorbers, Portals and Flippers. 
+ * 
+ * A flingball board is a 20L x 20L grid with the origin in the upper
+ * left-hand corner. Gadgets are placed in one or more squares on the grid. 
+ * No two gadgets are allowed to occupy the same square on the grid. The default
+ * gadget limit for a board is 60. 
+ * 
+ * Balls on the flingball travel with a velocity between 0 L/s and 200 L/s.
+ * 
+ * A flingball board allows gadgets to to trigger the board actions specified by 
+ * the Action enumeration. These actions are in addition to the default actions
+ * for each Gadget and can override the default action. 
+ * 
+ * Flingball can also be played with multiple players via a hosted WebServer. 
+ * Clients have the ability to attach boards either horizontally or vertically
+ * to create a multi-player environment. If two boards are joined the name of 
+ * the joined board will appear on the respective wall. 
+ * 
+ * A flingball board accounts for both gravity and friction. Players have the
+ * ability to specify these values when creating a board. If not specified, the 
+ * default values are used. the default values are as follows:
+ * <ol>
+ * <li>Gravity = 25 L</li>
+ * <li>Friction 1 = 0.025 L</li>
+ * <li>Friction 2 = 0.025 L</li>
+ * </ol>
+ * 
+ * Flingball boards are generated from board files (.fb). Board files must 
+ * match the following format:
+ * 
+ * # Comment. Lines starting with # are ignored
+ * 
+ * # the board must be the first line in the file
+ * board name=NAME (gravity=FLOAT)? (friction1=FLOAT)? (friction2=FLOAT)?
+ * 
+ * ball name=NAME x=FLOAT y=FLOAT xVelocity=FLOAT yVelocity=FLOAT
+ * 
+ * squareBumper name=NAME x=INTEGER y=INTEGER
+ * circleBumper name=NAME x=INTEGER y=INTEGER
+ * triangleBumper name=NAME x=INTEGER y=INTEGER (orientation=0|90|180|270)?
+ * absorber name=NAME x=INTEGER y=INTEGER width=INTEGER height=INTEGER
+ * rightFlipper name=NAME x=INTEGER y=INTEGER (orientation=0|90|180|270)?
+ * leftFlipper name=NAME x=INTEGER y=INTEGER (orientation=0|90|180|270)?
+ * portal name=NAME x=INTEGER y=INTEGER (otherBoard=NAME)? otherPortal=NAME
+ * 
+ * fire trigger=NAME action=NAME
+ * 
+ * keydown key=KEY action=NAME
+ * keyup key=KEY action=NAME
+ * 
+ * INTEGER ::= [0-9]+
+ * FLOAT ::= -?([0-9]+.[0-9]*|.?[0-9]+)
+ * NAME ::= [A-Za-z_][A-Za-z_0-9]*
+ * 
+ */
 public class Board extends JPanel{
 	
 	/**
-	 * A board on which the game flingball can be played. Objects which can be 
-	 * played on a flingball board include balls and gadgets. A gadget is any object 
-	 * that implements the the Gadget interface (including Square, Triangle and
-	 * Circle Bumpers, Absorbers, Portals and Flippers. 
-	 * 
-	 * A flingball board is a 20L x 20L grid with the origin in the upper
-	 * left-hand corner. Gadgets are placed in one or more squares on the grid. 
-	 * No two gadgets are allowed to occupy the same square on the grid. The default
-	 * gadget limit for a board is 60. 
-	 * 
-	 * Balls on the flingball travel with a velocity between 0 L/s and 200 L/s.
-	 * 
-	 * A flingball board allows gadgets to to trigger the board actions specified by 
-	 * the Action enumeration. These actions are in addition to the default actions
-	 * for each Gadget and can override the default action. 
-	 * 
-	 * Flingball can also be played with multiple players via a hosted WebServer. 
-	 * Clients have the ability to attach boards either horizontally or vertically
-	 * to create a multi-player environment. If two boards are joined the name of 
-	 * the joined board will appear on the respective wall. 
-	 * 
-	 * A flingball board accounts for both gravity and friction. Players have the
-	 * ability to specify these values when creating a board. If not specified, the 
-	 * default values are used. the default values are as follows:
-	 * <ol>
-	 * <li>Gravity = 25 L</li>
-	 * <li>Friction 1 = 0.025 L</li>
-	 * <li>Friction 2 = 0.025 L</li>
-	 * </ol>
-	 * 
-	 * Flingball boards are generated from board files (.fb). Board files must 
-	 * match the following format:
-	 * 
-	 * # Comment. Lines starting with # are ignored
-	 * 
-	 * # the board must be the first line in the file
-	 * board name=NAME (gravity=FLOAT)? (friction1=FLOAT)? (friction2=FLOAT)?
-	 * 
-	 * ball name=NAME x=FLOAT y=FLOAT xVelocity=FLOAT yVelocity=FLOAT
-	 * 
-	 * squareBumper name=NAME x=INTEGER y=INTEGER
-	 * circleBumper name=NAME x=INTEGER y=INTEGER
-	 * triangleBumper name=NAME x=INTEGER y=INTEGER (orientation=0|90|180|270)?
-	 * absorber name=NAME x=INTEGER y=INTEGER width=INTEGER height=INTEGER
-	 * rightFlipper name=NAME x=INTEGER y=INTEGER (orientation=0|90|180|270)?
-	 * leftFlipper name=NAME x=INTEGER y=INTEGER (orientation=0|90|180|270)?
-	 * portal name=NAME x=INTEGER y=INTEGER (otherBoard=NAME)? otherPortal=NAME
-	 * 
-	 * fire trigger=NAME action=NAME
-	 * 
-	 * keydown key=KEY action=NAME
-	 * keyup key=KEY action=NAME
-	 * 
-	 * INTEGER ::= [0-9]+
-	 * FLOAT ::= -?([0-9]+.[0-9]*|.?[0-9]+)
-	 * NAME ::= [A-Za-z_][A-Za-z_0-9]*
-	 * 
+	 *TODO What is this?
 	 */
-	
-	/*
-	 * AF(height, width, gadgets, balls, triggers, neighbors) ::= 
-	 * 		Flingball board of size width*L x height*L. The board contains all gadgets, balls and triggers. The board is
-	 *  	connected to all neighbors. 
-	 * Rep Invariant = 
-	 * 		No two gadgets have same anchor
-	 * 		All gadgets are entirely on the board
-	 * 		All balls are entirely on the board or a neighboring board
-	 * 		No two gadgets or balls have the same name
-	 * 		No balls or gadgets overlap with each other. Excluding balls trapped in absorbers
-	 * 		All keys and values in triggers are on the board
-	 * 		All keys in boardTriggers are gadgets on the board
-	 * 		All items in the lists of values in keyTriggers are on the board
-	 * 		Each neighbor is connected to this board
-	 * TODO: Safety from rep exposure
-	 * 		coverage is exposed in gadget.setCoverage();
-	 * TODO: Thread Safety Argument
-	 */
-	
-	private void checkRep() {
-		Set<Vect> positions = new HashSet<Vect>();
-		Set<String> names = new HashSet<String>();
-		for (Gadget gadget : gadgets) {
-			final Vect position = gadget.position();
-			assert positions.add(position) : "Duplicate gadget positon: " + gadget;
-			
-			assert position.x() >= 0 : "x < 0: " + gadget;
-			assert position.y() >= 0 : "y < 0: " + gadget;
-			
-			assert position.x() + gadget.width() <= WIDTH : "x + WIDTH > " + WIDTH + ": " + gadget;
-			assert position.y() + gadget.height() <= HEIGHT : "x + HEIGHT > " + HEIGHT + ": " + gadget;
-			
-			assert names.add(gadget.name()) : "Duplicate name - gadget: " + gadget;
-			
-			//TODO Check for ball overlaps in bumpers allow portals and absorbers
-		}
-		
-		for (Ball ball : balls) {
-			//TODO This isn't a necessary check and will crash the game if another player uses a ball with the same name
-			assert names.add(ball.name()) : "Dublicate name - ball: " + ball + " on board " + this.NAME;
-			final Vect position = ball.getAnchor();
-			
-			assert position.x() >= 0 : "x < 0: " + ball;
-			assert position.y() >= 0 : "y < 0: " + ball;
-			
-			assert position.x() + ball.getRadius() * 2 <= WIDTH : "x + WIDTH > " + WIDTH + ": " + ball;
-			assert position.y() + ball.getRadius() * 2 <= HEIGHT : "x + HEIGHT > " + HEIGHT + ": " + ball;
-		}
-		
-		for (Gadget gadget : triggers.keySet()) {
-			assert gadgets.contains(gadget) : "Trigger not in gadgets: " + gadget + " triggers " + triggers.get(gadget);
-			for (Gadget actionGadget : triggers.get(gadget)) {
-				assert gadgets.contains(actionGadget) : "Triggered gadget not in gadgets" + actionGadget;
-			}
-		}
-		
-		for (Gadget gadget : boardTriggers.keySet()) {
-			assert gadgets.contains(gadget) : "Board trigger not in gadgets: " + gadget + " triggers " + boardTriggers.get(gadget);
-		}
-		
-		for (String key : keyUpTriggers.keySet()) {
-			for (Gadget actionGadget : keyUpTriggers.get(key)) {
-				assert gadgets.contains(actionGadget) : "Key Triggered gadget not in gadgets" + actionGadget;
-			}
-		}
-		for (String key : keyDownTriggers.keySet()) {
-			for (Gadget actionGadget : keyDownTriggers.get(key)) {
-				assert gadgets.contains(actionGadget) : "Key Triggered gadget not in gadgets" + actionGadget;
-			}
-		}
-	}
-	
+	private static final long serialVersionUID = 1L;
+
 	// Default Values
 	public static final int GADGET_LIMIT = 60;
 	public static final double DEFAULT_GRAVITY = 25.0;
@@ -206,7 +134,7 @@ public class Board extends JPanel{
 	
 	// Listeners
 	private Set<BallListener> ballListeners = new HashSet<BallListener>();
-	private final List<RequestListener> requestListeners = new ArrayList<RequestListener>(); //TODO Don't use null here
+	private final List<RequestListener> requestListeners = new ArrayList<RequestListener>();
 	
 	public final KeyAdapter keyListener = new KeyAdapter() {
 		@Override public void keyReleased(KeyEvent e) {
@@ -216,6 +144,76 @@ public class Board extends JPanel{
 			onKey(KeyNames.keyName.get(e.getKeyCode()), keyDownTriggers, keyDownBoardTriggers);
 		}
 	};
+	
+	/*
+	 * AF(height, width, gadgets, balls, triggers, neighbors) ::= 
+	 * 		Flingball board of size width*L x height*L. The board contains all gadgets, balls and triggers. The board is
+	 *  	connected to all neighbors. 
+	 * Rep Invariant = 
+	 * 		No two gadgets have same anchor
+	 * 		All gadgets are entirely on the board
+	 * 		All balls are entirely on the board or a neighboring board
+	 * 		No two gadgets have the same name
+	 * 		No balls or gadgets overlap with each other. Excluding balls trapped in absorbers
+	 * 		All keys and values in triggers are on the board
+	 * 		All keys in boardTriggers are gadgets on the board
+	 * 		All items in the lists of values in keyTriggers are on the board
+	 * 		Each neighbor is connected to this board
+	 * TODO: Safety from rep exposure
+	 * 		coverage is exposed in gadget.setCoverage();
+	 * TODO: Thread Safety Argument
+	 */
+	
+	private void checkRep() {
+		Set<Vect> positions = new HashSet<Vect>();
+		Set<String> names = new HashSet<String>();
+		for (Gadget gadget : gadgets) {
+			final Vect position = gadget.position();
+			assert positions.add(position) : "Duplicate gadget positon: " + gadget;
+			
+			assert position.x() >= 0 : "x < 0: " + gadget;
+			assert position.y() >= 0 : "y < 0: " + gadget;
+			
+			assert position.x() + gadget.width() <= WIDTH : "x + WIDTH > " + WIDTH + ": " + gadget;
+			assert position.y() + gadget.height() <= HEIGHT : "x + HEIGHT > " + HEIGHT + ": " + gadget;
+			
+			assert names.add(gadget.name()) : "Duplicate name - gadget: " + gadget;
+			
+			//TODO Check for ball overlaps in bumpers allow portals and absorbers
+		}
+		
+		for (Ball ball : balls) {
+			final Vect position = ball.getAnchor();
+			
+			assert position.x() >= 0 : "x < 0: " + ball;
+			assert position.y() >= 0 : "y < 0: " + ball;
+			
+			assert position.x() + ball.getRadius() * 2 <= WIDTH : "x + WIDTH > " + WIDTH + ": " + ball;
+			assert position.y() + ball.getRadius() * 2 <= HEIGHT : "x + HEIGHT > " + HEIGHT + ": " + ball;
+		}
+		
+		for (Gadget gadget : triggers.keySet()) {
+			assert gadgets.contains(gadget) : "Trigger not in gadgets: " + gadget + " triggers " + triggers.get(gadget);
+			for (Gadget actionGadget : triggers.get(gadget)) {
+				assert gadgets.contains(actionGadget) : "Triggered gadget not in gadgets" + actionGadget;
+			}
+		}
+		
+		for (Gadget gadget : boardTriggers.keySet()) {
+			assert gadgets.contains(gadget) : "Board trigger not in gadgets: " + gadget + " triggers " + boardTriggers.get(gadget);
+		}
+		
+		for (String key : keyUpTriggers.keySet()) {
+			for (Gadget actionGadget : keyUpTriggers.get(key)) {
+				assert gadgets.contains(actionGadget) : "Key Triggered gadget not in gadgets" + actionGadget;
+			}
+		}
+		for (String key : keyDownTriggers.keySet()) {
+			for (Gadget actionGadget : keyDownTriggers.get(key)) {
+				assert gadgets.contains(actionGadget) : "Key Triggered gadget not in gadgets" + actionGadget;
+			}
+		}
+	}
 
 
 	/**
@@ -231,12 +229,10 @@ public class Board extends JPanel{
 		this.gravity = gravity;
 		this.friction1 = friction1;
 		this.friction2 = friction2;
-		// Set a sufficiently small foresight for the physics engine to avoid
-		// mistimed flipper collisions. 
-		// TODO Is this doing anything
-		Physics.setForesight(0.0001);
+		// Set a sufficiently small foresight for the physics engine to prevent looking for flipper 
+		// collisions past the flippers point of rotation
+		Physics.setForesight(0.0005);
 		checkRep();
-		// TODO Only start this if board in in client-server mode. Should be done from Flingball.java
 	}
 	
 	//Instance Methods
@@ -254,15 +250,6 @@ public class Board extends JPanel{
 		checkRep();	
 	}
 	
-	//TODO spec
-	public interface BallListener {
-		public void onStart(final double time);
-		
-		public void onEnd();
-		
-		public String name();
-	}
-	
 	/**
 	 * Adds a ball to the flingball board using the ball's position and velocity. If the ball has a position 
 	 * not on the board, it is not added. If the ball has a velocity >= 200 L / s, the velocity is set to 200. 
@@ -270,18 +257,8 @@ public class Board extends JPanel{
 	 * @return the listener for the Ball
 	 */
 	public BallListener addBall(Ball ball) {
-		//TODO Start a new thread for each ball. this is done in play but what about balls added at a later point. 
 		balls.add(ball);
-//		new Thread(() ->  {
-//			while (true) {
-//				try {
-//				moveOneBall(ball, BoardAnimation.FRAME_RATE / 1000);
-//				Thread.sleep(BoardAnimation.FRAME_RATE);
-//				} catch (InterruptedException e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		}, ball.name()).start();
+
 		BallListener listener = new BallListener() {
 			Thread worker;
 			AtomicBoolean running = new AtomicBoolean(false);
@@ -325,7 +302,7 @@ public class Board extends JPanel{
 	 * @param ball ball to be removed. 
 	 */
 	public void removeBall(Ball ball) {
-		balls.remove(ball);
+		this.balls.remove(ball);
 		for (BallListener listener : this.ballListeners) {
 			if (ball.name().equals(listener.name())) {
 				listener.onEnd();
@@ -417,74 +394,15 @@ public class Board extends JPanel{
 		BOARD, GADGET, KEYUP, KEYDOWN, KEYBOARDUP, KEYBOARDDOWN
 	}
 	
-	/**
-	 * If the provided string is a member of Action then the appropriate Action type is returned. 
-	 * If not, then Action.NONE is returned. 
-	 * @param action
-	 * @return
-	 */
-	public static Action readAction(String action) {
-		Action actionToTake;
-		switch (action) {	
-		case"FIRE_ALL": {
-			actionToTake = Action.FIRE_ALL;
-			break;
-		}
-		case"ADD_BALL": {
-			actionToTake = Action.ADD_BALL;
-			break;
-		}
-		case"ADD_SQUARE": {
-			actionToTake = Action.ADD_SQUARE;
-			break;
-		}
-		case"ADD_CIRCLE": {
-			actionToTake = Action.ADD_CIRCLE;
-			break;
-		}
-		case"ADD_TRIANGLE": {
-			actionToTake = Action.ADD_TRIANGLE;
-			break;
-		}
-		case"ADD_ABSORBER": {
-			actionToTake = Action.ADD_ABSORBER;
-			break;
-		}
-		case"REVERSE_BALLS": {
-			actionToTake = Action.REVERSE_BALLS;
-			break;
-		}
-		case"REMOVE_BALL": {
-			actionToTake = Action.REMOVE_BALL;
-			break;
-		}
-		case"REMOVE_GADGET": {
-			actionToTake = Action.REMOVE_GADGET;
-			break;
-		}
-		case"SPLIT": {
-			actionToTake = Action.SPLIT;
-			break;
-		}
-		default:{
-			actionToTake = Action.NONE;
-			break;
-		}
-		}
-		return actionToTake;
-	}
-	
 	
 	/**
 	 * 
-	 * @param trigger
-	 * @param action
-	 * @param type
+	 * @param trigger name of the Gadget, or Key that will trigger the action
+	 * @param action name of the gadget who's action will be triggered
+	 * @param type type of action 
 	 */
 	public void addAction(String trigger, String action, ActionType type) {
-		// TODO Action gets read twice. Can fix with two separate methods in Board or by changing method signature
-		// to include Action boardAction and String actionGadget. This is kind of shitty and confusing to others though
-		Action boardAction = readAction(action);
+		Action boardAction = Action.fromString(action);
 		switch (type) {
 		case BOARD:
 		{
@@ -521,82 +439,28 @@ public class Board extends JPanel{
 		}
 	}
 	
-	
-	public enum Border {
-		TOP, BOTTOM, LEFT, RIGHT;
-		
-		public Border complement() {
-			switch (this) {
-			case BOTTOM:
-				return TOP;
-			case LEFT:
-				return RIGHT;
-			case RIGHT:
-				return LEFT;
-			case TOP:
-				return BOTTOM;
-			default:
-				throw new RuntimeException("Should never get here. Invalid border " + this.toString());
-			}
-		}
-		
-		//TOOO SPEC
-		public static Border fromString(String s) throws NoSuchElementException{
-			switch (s) {
-			case "TOP": {
-				 return TOP;
-			 }
-			 case "BOTTOM": {
-				return BOTTOM;
-			 }
-			 case "LEFT": {
-				 return LEFT;
-			 }
-			case "RIGHT": {
-				return RIGHT;
-			}
-			default:
-				throw new NoSuchElementException("String does not match a border");
-			}
-		}
-	}
-	
 	/**
-	 *TODO Update Spec
-	 * Connects two boards at the given Wall. The connection is symmetric. That is that if 
-	 * Board A is connected to Board B a the TOP then Board B is automatically connected to Board A 
-	 * at the BOTTOM
 	 * 
-	 * @param neighbor name of board being connected to this board
-	 * @param border wall on this board where the other board is connected
+	 * @return a list of balls currently on this flingball board
 	 */
-	public void addNeightbor(Wall border) {
-		this.neighbors.add(border);
-		checkRep();
-	}
-	
-	/**
-	 * TODO
-	 * @param border
-	 */
-	public void removeNeightbor(Wall border) {
-		this.neighbors.remove(border);
-		checkRep();
-	}
-	
 	public List<Ball> getBalls() {
 		List<Ball> result = new ArrayList<Ball>(this.balls);
 		return result;
 	}
 	
+	/**
+	 * 
+	 * @return a list of gadgets currently on the flingball board
+	 */
 	public List<Gadget> getGadgets() {
 		List<Gadget> result = new ArrayList<Gadget>(gadgets);
 		return result;
 	}
 
 	/**
-	 * Sets the board into action for the given amount of time. All balls are moved taking into account the effects
-	 * of gravity and friction. All actions which are triggered during this time are taken. 
+	 * Sets the board into action the game is played in time (seconds) increments. For example, the call play(5)
+	 * will move all balls 5 seconds forward in time and take all actions which may have occurred during that time. 
+	 * 
 	 * @param time length of time the board is played. 
 	 */
 	public void play(final double time) {
@@ -606,6 +470,21 @@ public class Board extends JPanel{
 		}
 			checkRep();
 	}
+	
+//	public void checkFlipperCollision(RightFlipper f, double time) {
+//		synchronized (f) {
+//			for (Ball ball : this.balls) {
+//				synchronized (ball) {
+//					final double collisionTime = f.collisionTime(ball);
+//					if (collisionTime < time) {
+//						ball.move(collisionTime, this.gravity, this.friction1, this.friction2);
+//						f.rotate(collisionTime);
+//						f.reflectBall(ball);
+//					}
+//				}
+//			}
+//		}
+//	}
 
 	/**
 	 * Moves one ball on the board for the given amount of time accounting for the effects of friction
@@ -614,14 +493,12 @@ public class Board extends JPanel{
 	 * @param time
 	 */
 	private void moveOneBall(Ball ball, final double time) {
-		// System.out.println("Ball center " + ball.getBoardCenter() + " on " + this.NAME);
 		final Gadget NO_COLLISION = new Wall("NO_COLLISION", 0, 0, 0, 0);
 		double collisionTime = Double.POSITIVE_INFINITY;
 		Gadget nextGadget = NO_COLLISION;
 		// Find the gadget with which the ball will collide next
 		for (Gadget gadget : this.gadgets) {
 			if (gadget.collisionTime(ball) < collisionTime) {
-				//TODO This calculation does not account for gravity
 				collisionTime = gadget.collisionTime(ball);
 				nextGadget = gadget;
 			}
@@ -639,13 +516,21 @@ public class Board extends JPanel{
 		
 		// TODO Ball Ball collisions should be calculated
 		// If a ball will collide during the play time perform the collision. 
+		
 		if (collisionTime <= time && nextGadget != NO_COLLISION) {
 			// Move ball to collision point
-		// TODO Could this result in an infinite loop due to small math error?s - Yes
-		//	while (collisionTime > 0) {
-				ball.move(collisionTime, this.gravity, this.friction1, this.friction2);
-//				collisionTime = nextGadget.collisionTime(ball);
-//			}
+			//TODO This causes a bug with flippers since they rotate in their own thread. 
+			// if the ball is moved the flipper will continue to rotate and can rotate past
+			// the collision point. reflect ball should just be an all inclusive method. 
+			// where it is given the collision time and total play time and moves the ball appropriately
+			synchronized (nextGadget) {
+//				try {
+//					Thread.sleep(1000L);
+//				} catch (InterruptedException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}
+			ball.move(collisionTime, this.gravity, this.friction1, this.friction2);
 			checkRep();
 			
 			// Check if the board is connected to another board and handle the ball transfer
@@ -653,6 +538,7 @@ public class Board extends JPanel{
 				this.removeBall(ball);
 				//TODO This doesn't account for Gadgets right on the wall. Should probably do a collision check on the new board. 
 				Vect center = ball.getBoardCenter();
+				// TODO replace switch statement with usign the wall's position
 				switch (nextGadget.name()) {
 				case "TOP":{
 					ball.setBoardPosition(new Vect(center.x(), 20 - ball.getRadius()));
@@ -663,7 +549,6 @@ public class Board extends JPanel{
 					break;
 				case "LEFT":
 					ball.setBoardPosition(new Vect(20 - ball.getRadius(), center.y()));
-					System.out.println("Moving through LEFT board");
 					break;
 				case "RIGHT":
 					ball.setBoardPosition(new Vect(ball.getRadius(), center.y())); 
@@ -671,26 +556,26 @@ public class Board extends JPanel{
 				}
 				Vect velocity = ball.getVelocity();
 				center = ball.getBoardCenter();
-				String name = ball.name().replaceAll("\\s", "");  // Ball Cannot have any spaces. 
+				String name = ball.name().replaceAll("\\s", "");  // Ball names cannot have any spaces. 
 				
 				this.notifyRequestListeners("addBall " + nextGadget.name() + " " + name + " " + center.x() + " " + center.y() + " " + velocity.x() + " " + velocity.y());
 				return;
 				
 			} else if (nextGadget instanceof Portal 
+					&& ((Portal) nextGadget).isConnected()
 					&& !((Portal) nextGadget).getTargetBboard().equals(this.NAME) 
-					&& ((Portal) nextGadget).isConnected()) {
+					) {
 				// If the ball hits a connected portal teleport it to the appropriate board. 
 				this.removeBall(ball);
 				
 				
-				//TODO Server Communication is slow if the ball teleports again then two balls with the same name
-				// are added. 
 				this.notifyRequestListeners("teleport " + nextGadget.name() + " " + ball.name() + " " + 
 						ball.getVelocity().x() + " " + ball.getVelocity().y());
 				
 				
 			} else {
 				nextGadget.reflectBall(ball);
+			}
 			}
 			
 			// Perform any actions triggered by the collision
@@ -710,17 +595,17 @@ public class Board extends JPanel{
 			
 			// Move ball during the rest of time after collision has occurred. 
 			if (ball.getVelocity().length() > 0.0 && collisionTime > 0) {
-				// TODO What about simultaneous collisions
 				moveOneBall(ball, time - collisionTime);
 			}
 		} else {
 			ball.move(time, this.gravity, this.friction1, this.friction2);
 		}
+		
 	}
-
+	
 	/**
-	 * Takes an action on the board. 
-	 * @param action action to be taken. 
+	 * Takes a board action on the board. 
+	 * @param action board action to be taken. 
 	 */
 	private void takeAction(Action action) {
 		//TODO BoardActions
@@ -747,7 +632,6 @@ public class Board extends JPanel{
 			try {
 				String otherBoard = this.portals.get(portal).get(1);
 				String target = this.portals.get(portal).get(0);
-				//System.out.println("Connecting " + portal.name() + " to " + target + " on " + otherBoard);
 				if (otherBoard.equals(this.NAME)) {
 					// If connected to a portal on this board bypass the server. 
 					portal.connect(this.getPortal(target).getCenter(), otherBoard);
@@ -759,7 +643,6 @@ public class Board extends JPanel{
 				e.printStackTrace();
 			}	
 		}
-		//System.out.println(result);
 		return result;
 	}
 	
@@ -793,19 +676,7 @@ public class Board extends JPanel{
 		throw new NoSuchElementException(name + " portal not found");
 	}
 	
-//	private Board getBoard(String name) {
-//		if (name.equals(this.NAME)) {
-//			return this;
-//		}
-//		for (Wall wall : neighbors.keySet()) {
-//			Board board = neighbors.get(wall);
-//			if (name.equals(board.NAME)) {
-//				return board;
-//			}
-//		}
-//		throw new NoSuchElementException(name + " board not found");
-//	}
-	
+
 	/**
 	 * Triggers the actions associated with key in keyTriggers and keyBoardTriggers
 	 * @param key that is pressed or released
@@ -831,7 +702,7 @@ public class Board extends JPanel{
 	}
 	
 	/**
-	 * 
+	 * Sets the coverate for a given gadget. 
 	 * @param gadget
 	 */
 	private void setCoverage(Gadget gadget) {
@@ -861,7 +732,6 @@ public class Board extends JPanel{
 		
 		final ImageObserver NO_OBSERVER_NEEDED = null;
 		
-		graphics.setColor(Color.BLUE);
 		for (Ball ball : balls) {
 			final Vect anchor = ball.getAnchor().times(L);
 			
@@ -869,6 +739,7 @@ public class Board extends JPanel{
 					
 		}
 		
+		//TODO Use listeners so that gadgets are only drawn when they change. 
 		for (Gadget gadget : gadgets) {
 			final int xAnchor = (int) gadget.position().x()*L;
 			final int yAnchor = (int) gadget.position().y()*L;
@@ -898,26 +769,22 @@ public class Board extends JPanel{
 		 String[] tokens = response.split(" ");
 		 
 		 switch (tokens[0]) {
-		 case "QUIT": {
-			 //TODO
-			 break;
-		 }
 		 case "JOIN": {
 			 switch (tokens[1]) {
 			 case "TOP": {
-				 this.addNeightbor(this.TOP);
+				 this.neighbors.add(this.TOP);
 				 break;
 			 }
 			 case "BOTTOM": {
-				 this.addNeightbor(this.BOTTOM);
+				 this.neighbors.add(this.BOTTOM);
 				 break;
 			 }
 			 case "LEFT": {
-				 this.addNeightbor(this.LEFT);
+				 this.neighbors.add(this.LEFT);
 				 break;
 			 }
 			case "RIGHT": {
-				 this.addNeightbor(this.RIGHT);
+				this.neighbors.add(this.RIGHT);
 				 break;
 			}
 			default: {
@@ -984,13 +851,24 @@ public class Board extends JPanel{
 			 throw new RuntimeException("Request not recognized: " + response);
 		 }
 		 }
+		 
+		 checkRep();
 	}
 	
 
+	/**
+	 *
+	 * @param listener listener subscribing to changes to this Flingball board. 
+	 */
 	public void addRequestListener(RequestListener listener) {
 		this.requestListeners.add(listener);
 	}
 	
+	/**
+	 * Notifies objects listening for changes to this board. 
+	 * 
+	 * @param request String matching the Flingball server request protocol. 
+	 */
 	private void notifyRequestListeners(String request) {
 		for (RequestListener listener : this.requestListeners) {
 			listener.onRequest(request);

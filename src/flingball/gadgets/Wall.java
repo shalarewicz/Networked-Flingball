@@ -22,6 +22,7 @@ public class Wall implements Gadget {
 	private final Circle c1, c2;
 	
 	
+	
 	public Wall(String name, double x1, double y1, double x2, double y2) {
 		this.x1 = x1;
 		this.x2 = x2;
@@ -123,11 +124,13 @@ public class Wall implements Gadget {
 
 	@Override
 	public double collisionTime(Ball ball) {
-		final double timeToWall = ball.timeUntilLineCollision(this.wall);
-		final double timeToc1 = ball.timeUntilCircleCollision(c1);
-		final double timeToc2 = ball.timeUntilCircleCollision(c2);
-		
-		return Math.min(timeToWall, Math.min(timeToc1, timeToc2));
+		synchronized (this) {
+			final double timeToWall = ball.timeUntilLineCollision(this.wall);
+			final double timeToc1 = ball.timeUntilCircleCollision(c1);
+			final double timeToc2 = ball.timeUntilCircleCollision(c2);
+			
+			return Math.min(timeToWall, Math.min(timeToc1, timeToc2));
+		}
 	}
 
 	@Override
@@ -147,21 +150,23 @@ public class Wall implements Gadget {
 
 	@Override
 	public void reflectBall(Ball ball) {
-		final double timeToWall = ball.timeUntilLineCollision(this.wall);
-		final double timeToc1 = ball.timeUntilCircleCollision(c1);
-		final double timeToc2 = ball.timeUntilCircleCollision(c2);
-		
-		double collisionTime = Math.min(timeToWall, Math.min(timeToc1, timeToc2));
-		
-		if (collisionTime == timeToWall) {
-			ball.reflectLine(this.wall, this.reflectionCoeff);	
-		}
-		else if (collisionTime == timeToc1) {
-			ball.reflectCircle(c1, this.reflectionCoeff);
-		}
-		else {
-			ball.reflectCircle(c2, this.reflectionCoeff);
+		synchronized (this) {
+			final double timeToWall = ball.timeUntilLineCollision(this.wall);
+			final double timeToc1 = ball.timeUntilCircleCollision(c1);
+			final double timeToc2 = ball.timeUntilCircleCollision(c2);
 			
+			double collisionTime = Math.min(timeToWall, Math.min(timeToc1, timeToc2));
+			
+			if (collisionTime == timeToWall) {
+				ball.reflectLine(this.wall, this.reflectionCoeff);	
+			}
+			else if (collisionTime == timeToc1) {
+				ball.reflectCircle(c1, this.reflectionCoeff);
+			}
+			else {
+				ball.reflectCircle(c2, this.reflectionCoeff);
+				
+			}
 		}
 		
 	}
@@ -176,9 +181,12 @@ public class Wall implements Gadget {
 	public boolean ballOverlap(Ball ball) {
 		Vect ballCenter = ball.getCartesianCenter();
 		Vect perpendicularPoint = Physics.perpendicularPoint(this.wall, ballCenter);
-		System.out.println(ballCenter);
-		System.out.println(perpendicularPoint);
-		return Physics.distanceSquared(ballCenter, perpendicularPoint) >= 0;
+		if (perpendicularPoint == null) {
+			return Math.sqrt(Physics.distanceSquared(ballCenter, this.wall.p1())) >= ball.getRadius() && 
+					Math.sqrt(Physics.distanceSquared(ballCenter, this.wall.p2())) >= ball.getRadius();
+		} else {
+			return Math.sqrt(Physics.distanceSquared(ballCenter, perpendicularPoint)) >= ball.getRadius();
+		}
 	}
 
 	@Override
@@ -194,19 +202,26 @@ public class Wall implements Gadget {
 	
 	//TODO Spec
 	public Wall rotateAround(Vect cor, Angle a) {
-		Circle newC1 = Physics.rotateAround(this.c1, cor, a);
-		Circle newC2 = Physics.rotateAround(this.c2, cor, a);
-		
-		return new Wall(this.name, newC1.getCenter().x(), newC1.getCenter().y(), newC2.getCenter().x(), newC2.getCenter().y());
+		synchronized (this) {
+			Circle newC1 = Physics.rotateAround(this.c1, cor, a);
+			Circle newC2 = Physics.rotateAround(this.c2, cor, a);
+			
+			return new Wall(this.name, newC1.getCenter().x(), newC1.getCenter().y(), newC2.getCenter().x(), newC2.getCenter().y());
+		}
 	}
 	
 	//TODO Spec
 	public double timeUntilRotatingWallCollision(Ball ball, Vect pivot, double angularVelocity) {
-		return ball.timeUntilRotatingLineCollision(this.wall, pivot, angularVelocity);
+		synchronized (this) {
+			return ball.timeUntilRotatingLineCollision(this.wall, pivot, angularVelocity);
+		}
 	}
 	
 	//TODO Spec
 	public void reflectBallRotating(Ball ball, Vect pivot, double angularVelocity, double reflectionCoeff) {
-		ball.reflectRotatingLine(this.wall, pivot, angularVelocity, reflectionCoeff);
+		synchronized (this) {
+			ball.reflectRotatingLine(this.wall, pivot, angularVelocity, reflectionCoeff);
+		}
 	}
+
 }
