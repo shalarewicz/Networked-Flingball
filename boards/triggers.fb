@@ -38,3 +38,8 @@ fire trigger=SquareH action=FlipL
 
 # make the absorber self-triggering
  fire trigger=Abs action=Abs 
+ keydown key = j action = FlipR
+ 
+ 
+ #Define a portal connected on Portals
+portal name = PortalE x = 10 y = 10 otherBoard = Portals otherPortal portalB

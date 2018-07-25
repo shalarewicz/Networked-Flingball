@@ -68,15 +68,16 @@ public class Flingball {
     			if (cmd.hasOption("host")) {
     				try {
     					connect(board, prt, cmd.getOptionValue("host"));
+    				} catch (UnknownHostException uhe) {
+    					System.err.println("Could not connect to host " + cmd.getOptionValue("host"));
+    					System.err.println("Plaing in single player");
     				} catch (IOException ioe) {
-    					System.out.println("Server Connection interupted");
-    					System.exit(1);
+    					System.err.println("Server Connection interupted");
     				} 
-    				
-	    		} else {
-	    			board.connectPortals();
-	    			new BoardAnimation(board);
 	    		}
+    			
+    			board.connectPortals();
+    			new BoardAnimation(board);
     		
     		} catch (IOException e) {
     			System.out.println(file + " not found");

@@ -21,20 +21,20 @@ import flingball.Ball;
 import flingball.Orientation;
 import physics.Vect;
 
+/**
+ * TriangleBumper represents a triangle bumper which can be played
+ * as a gadget on a flingball board. A TriangleBumper has a height and 
+ * width of 1 L and its anchor is located in the upper left-hand corner of it's bounding box. 
+ * 
+ * A TriangleBumper can have one of four Orientations. The default Orientation for a TriangleBumper
+ * is 0 degrees and places one corner in the northeast, one corner in the northwest, and the last 
+ * corner in the southwest. The diagonal goes from the southwest corner to the northeast corner. 
+ * The TriangleBumper can then be rotated 90 degrees clockwise to be put in the next Orientation
+ * 
+ * A TriangleBumper has no default action but can trigger a provided Board Action
+ */
 public class TriangleBumper implements Bumper {
 	
-	/**
-	 * TriangleBumper represents a triangle bumper which can be played
-	 * as a gadget on a flingball board. A TriangleBumper has a height and 
-	 * width of 1 L and its anchor is located in the upper left-hand corner of it's bounding box. 
-	 * 
-	 * A TriangleBumper can have one of four Orientations. The default Orientation for a TriangleBumper
-	 * is 0 degrees and places one corner in the northeast, one corner in the northwest, and the last 
-	 * corner in the southwest. The diagonal goes from the southwest corner to the northeast corner. 
-	 * The TriangleBumper can then be rotated 90 degrees clockwise to be put in the next Orientation
-	 * 
-	 * A TriangleBumper has no default action but can trigger a provided Board Action
-	 */
 	
 	private String name;
 	private final int x, y;
@@ -321,4 +321,5 @@ public class TriangleBumper implements Bumper {
 		int y = (int) this.position().y();
 		coverage[y][x] = 1;
 	}
+	
 }

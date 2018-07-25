@@ -5,35 +5,32 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
 import flingball.Ball;
-import flingball.Board;
-import flingball.Board.BallListener;
-import flingball.BoardAnimation;
 import physics.Circle;
 import physics.Physics;
 import physics.Vect;
 
+/**
+ * A gadget which can be used on a flingball board. A portal is a circular hole with diameter
+ * 1 L. A portal can teleport an object to another target portal located on the same board or 
+ * on a connected board. The ball will exit the target portal with the same velocity 
+ * that it entered the source portal. If no target portal exists then the ball passes over
+ * the portal unaffected. 
+ * 
+ * In order to teleport through a portal the ball must completely leave the portal and then 
+ * collide with the portal again. Therefore, if a portal is immediately adjacent to a bumper 
+ * and the ball collides with the bumper back towards portal the ball will not teleport again.
+ * However, if there is an empty space between the portal and bumper then the ball will teleport
+ * again. 
+ * 
+ * Portals do not have to be symmetrically connected. That is Portal A can be connected to
+ * Portal B, but Portal B can be connected to Portal C. 
+ * 
+ * If another gadget uses a portal as it's trigger then the action is only performed when
+ * a ball strikes the portal not when it exits over the portal. 
+ * 
+ * Portals cannot have an action. 
+ */
 public class Portal implements Gadget {
-	/**
-	 * A gadget which can be used on a flingball board. A portal is a circular hole with diameter
-	 * 1 L. A portal can teleport an object to another target portal located on the same board or 
-	 * on a connected board. The ball will exit the target portal with the same velocity 
-	 * that it entered the source portal. If no target portal exists then the ball passes over
-	 * the portal unaffected. 
-	 * 
-	 * In order to teleport through a portal the ball must completely leave the portal and then 
-	 * collide with the portal again. Therefore, if a portal is immediately adjacent to a bumper 
-	 * and the ball collides with the bumper back towards portal the ball will not teleport again.
-	 * However, if there is an empty space between the portal and bumper then the ball will teleport
-	 * again. 
-	 * 
-	 * Portals do not have to be symmetrically connected. That is Portal A can be connected to
-	 * Portal B, but Portal B can be connected to Portal C. 
-	 * 
-	 * If another gadget uses a portal as it's trigger then the action is only performed when
-	 * a ball strikes the portal not when it exits over the portal. 
-	 * 
-	 * Portals cannot have an action. 
-	 */
 	
 	private final int x, y;
 	private Vect target;
@@ -248,4 +245,5 @@ public class Portal implements Gadget {
 				this.y == that.y &&
 				this.target == that.target;
 	}
+	
 }

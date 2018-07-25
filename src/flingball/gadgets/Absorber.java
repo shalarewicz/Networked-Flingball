@@ -15,24 +15,24 @@ import java.util.Set;
 import flingball.Ball;
 import physics.Vect;
 
+/**
+ * An absorber is a gadget which can be placed on a flingball board. An absorber
+ * is a rectangular gadget which is kL wide and mL tall where k,l <= 20. An 
+ * absorber acts as a ball return mechanism during a game of flingball. When a ball
+ * strikes an absorber the ball is held in the bottom right-hand corner of the 
+ * absorber. There is no limit to the amount of balls an absorber can hold in 
+ * this location. 
+ * 
+ * When an absorber's action is triggered one of it's captured balls (if any) will 
+ * be shot towards the top of the board with a speed of 50 L/s. If the absorber is
+ * not holding a ball or if the previously fired ball has not left the absorber, then
+ * no action is taken. 
+ * 
+ * Absorber's can be made self-triggering by connecting its trigger to its own 
+ * action. Balls that hit a self-triggering absorber will always leave the absorber. 
+ * 
+ */
 public class Absorber implements Gadget {
-	/**
-	 * An absorber is a gadget which can be placed on a flingball board. An absorber
-	 * is a rectangular gadget which is kL wide and mL tall where k,l <= 20. An 
-	 * absorber acts as a ball return mechanism during a game of flingball. When a ball
-	 * strikes an absorber the ball is held in the bottom right-hand corner of the 
-	 * absorber. There is no limit to the amount of balls an absorber can hold in 
-	 * this location. 
-	 * 
-	 * When an absorber's action is triggered one of it's captured balls (if any) will 
-	 * be shot towards the top of the board with a speed of 50 L/s. If the absorber is
-	 * not holding a ball or if the previously fired ball has not left the absorber, then
-	 * no action is taken. 
-	 * 
-	 * Absorber's can be made self-triggering by connecting its trigger to its own 
-	 * action. Balls that hit a self-triggering absorber will always leave the absorber. 
-	 * 
-	 */
 	
 	private String name;
 	private final int x, y, width, height;
@@ -149,7 +149,9 @@ public class Absorber implements Gadget {
 		final double r = ball.getRadius();
 		ball.setBoardPosition(new Vect(x + width - r, -y + height - r));
 		ball.trap();
-		balls.addLast(ball);
+		synchronized (this.balls) {
+			balls.addLast(ball);
+		}
 	}
 
 	@Override
@@ -163,14 +165,18 @@ public class Absorber implements Gadget {
 	}
 
 	@Override
-	public void takeAction() {
-		Ball toFire = balls.removeFirst();
-		toFire.release();
-		toFire.setVelocity(new Vect(0, -50));
-		double r = toFire.getRadius();
-		toFire.setBoardPosition(new Vect(x + width - r, -y - r)); // TODO This violates the spec. Balls are fired from lower right
-		// This is only a problem because ball overlap is part of checkRep for board. But balls can overlap portals and absorbers. 
-		// Just not bumpers
+	// synchronized prevents other threads from firing balls at the same time. 
+	public synchronized void takeAction() {
+		synchronized (this.balls) {
+			// second lock necessary to avoid race conditions with methods such as generate or reflectVall
+			Ball toFire = balls.removeFirst();
+			toFire.release();
+			toFire.setVelocity(new Vect(0, -50));
+			double r = toFire.getRadius();
+			toFire.setBoardPosition(new Vect(x + width - r, -y - r)); // TODO This violates the spec. Balls are fired from lower right
+			// This is only a problem because ball overlap is part of checkRep for board. But balls can overlap portals and absorbers. 
+			// Just not bumpers
+		}
 	}
 
 	@Override
@@ -195,19 +201,20 @@ public class Absorber implements Gadget {
         graphics.setColor(Color.PINK); //TODO Color and Design
         graphics.fillRect(0, 0, width*L, height*L);
         
-        if (this.balls.size() > 0) {
-        	graphics.setColor(Color.BLUE);
-        	Ball toDraw = balls.getFirst();
-        	final double diameter = toDraw.getRadius() * 2;
-        	
-        	final int xAnchor = (int) ((this.width - diameter) * L);
-        	final int yAnchor = (int) ((this.height - diameter) * L);
-        	
-        	final ImageObserver NO_OBSERVER_NEEDED = null;
-        	
-        	graphics.drawImage(toDraw.generate(L), xAnchor, yAnchor, NO_OBSERVER_NEEDED);
-        	
-
+        synchronized (this.balls) {
+	        if (this.balls.size() > 0) {
+	        	graphics.setColor(Color.BLUE);
+	        	Ball toDraw = balls.getFirst();
+	        	final double diameter = toDraw.getRadius() * 2;
+	        	
+	        	final int xAnchor = (int) ((this.width - diameter) * L);
+	        	final int yAnchor = (int) ((this.height - diameter) * L);
+	        	
+	        	final ImageObserver NO_OBSERVER_NEEDED = null;
+	        	
+	        	graphics.drawImage(toDraw.generate(L), xAnchor, yAnchor, NO_OBSERVER_NEEDED);
+	        	
+	        }
         }
         
         return output;
@@ -235,10 +242,12 @@ public class Absorber implements Gadget {
 	 * Fires all balls currently trapped by the absorber
 	 */
 	public void fireAll() {
-		for (Ball ball :this.balls) {
-			ball.setBoardPosition(new Vect(this.x + this.width - ball.getRadius(), this.y - ball.getRadius()));
-			ball.setVelocity(new Vect(Math.random() * 100, -Math.random()* 100));
-			ball.release();
+		synchronized (this.balls) {
+			for (Ball ball :this.balls) {
+				ball.setBoardPosition(new Vect(this.x + this.width - ball.getRadius(), this.y - ball.getRadius()));
+				ball.setVelocity(new Vect(Math.random() * 100, -Math.random()* 100));
+				ball.release();
+			}
 		}
 	}
 

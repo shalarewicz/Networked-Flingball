@@ -180,4 +180,5 @@ public class CircleBumper implements Bumper {
 		int y = (int) this.position().y();
 		coverage[y][x] = 1;
 	}
+	
 }

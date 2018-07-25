@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import flingball.Board.Border;
 
 /**
  * FlingballServer allows multiple clients play a game of networked flingball. Connected clients have the ability to connect boards 
@@ -29,7 +28,7 @@ public class FlingballServer {
 	// Map(Name, Server Responses)
 	final ConcurrentMap<String, Set<String>> boards = new ConcurrentHashMap<String, Set<String>>();
 	// Map(board name, Map(Connected border, connected board name))
-	final ConcurrentMap<String, ConcurrentMap<Board.Border, String>> neighbors = new ConcurrentHashMap<String, ConcurrentMap<Board.Border, String>>();
+	final ConcurrentMap<String, ConcurrentMap<Border, String>> neighbors = new ConcurrentHashMap<String, ConcurrentMap<Border, String>>();
 	
 	final ConcurrentMap<String, PrintWriter> outputStreams = new ConcurrentHashMap<String, PrintWriter>();
 	
@@ -59,7 +58,7 @@ public class FlingballServer {
 	private void checkRep() {
 		// Check for symmetrical board connections. 
 		for (String board : this.neighbors.keySet()) {
-			for (Board.Border border : this.neighbors.get(board).keySet()) {
+			for (Border border : this.neighbors.get(board).keySet()) {
 				String connectedBoard = this.neighbors.get(board).get(border);
 				assert this.neighbors.containsKey(connectedBoard) : "Connected Board must also be connected" + connectedBoard;
 				assert this.neighbors.get(connectedBoard).get(border.complement()).equals(board) : "Connection must be symmetric" + board + " connected to " + connectedBoard;
@@ -148,7 +147,7 @@ public class FlingballServer {
 									out.println("ERROR: Duplicate Board Name. Connection Terminated");
 									s.close();
 								} else {
-									this.neighbors.put(name, new ConcurrentHashMap<Board.Border, String>());
+									this.neighbors.put(name, new ConcurrentHashMap<Border, String>());
 									this.boards.put(name, ConcurrentHashMap.newKeySet());
 									this.outputStreams.put(name, out);
 								}
@@ -231,7 +230,7 @@ public class FlingballServer {
 				for (String source : this.portals.keySet()) {
 					if (source.contains(id + "/") || this.portals.get(source).contains(id + "/")) {
 						this.portals.remove(source);
-						this.outputStreams.get(id).println("DISCONNECT" + source.split("/")[1]);
+						this.outputStreams.get(id).println("DISCONNECT " + source.split("/")[1]);
 					}
 				}
 			}

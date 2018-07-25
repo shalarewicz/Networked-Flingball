@@ -103,14 +103,6 @@ public class BoardAnimation {
 	    			
 	    		}
 	    		
-	    		//TODO REMOVE GRID
-	    		for (int i = 1; i <= 20; i++) {
-	    			g2d.setColor(Color.GREEN);
-	    			g2d.drawLine(0, i*Board.L, Board.L * Board.L, i*Board.L);
-	    			g2d.drawLine(i*Board.L, 0, i*Board.L, Board.L * Board.L);
-	    			
-	    			
-	    		}
 	            g2d.dispose();
 	        }
 

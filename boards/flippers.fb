@@ -13,7 +13,7 @@ leftFlipper name=FlipC x=9 y=8 orientation=0
 leftFlipper name=FlipD x=15 y=8 orientation=0
 
 # define some right flippers 
-rightFlipper name=FlipB x=4 y=10 orientation=0 
+leftFlipper name=FlipB x=4 y=10 orientation=0 
 rightFlipper name=FlipE x=2 y=15 orientation=0
 rightFlipper name=FlipF x=17 y=15 orientation=0
 
@@ -32,6 +32,9 @@ triangleBumper name=TriB x=10 y=18 orientation=180
 # define an absorber
 absorber name=Abs x=0 y=19 width=20 height=1 
 
+#Define a portal connected on Portals
+portal name = PortalD x = 10 y = 10 otherBoard = Portals otherPortal = portalA
+
 
 # define events between gizmos
 fire trigger=CircleC action=FlipA
@@ -41,5 +44,6 @@ fire trigger=Abs action=FlipE
 fire trigger=Abs action=FlipF
 fire trigger=Abs action=Abs
 keydown key = space action = FlipB
+#keyup key = space action = FlipB
 
 

@@ -2,11 +2,7 @@ package flingball;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.stream.Stream;
 
 import edu.mit.eecs.parserlib.ParseTree;
 import edu.mit.eecs.parserlib.Parser;
@@ -142,7 +138,7 @@ public class BoardParser {
             					final int y = Integer.parseInt(bumperProperties.get(2).text());
             					Orientation o = Orientation.ZERO;
             					if (bumperProperties.size() > 2) {
-            						o = parseOrientation(bumperProperties.get(bumperProperties.size()-1).text());
+            						o = Orientation.parseOrientation(bumperProperties.get(bumperProperties.size()-1).text());
             					}
             					board.addGadget(new TriangleBumper(name, x, y, o));
             					continue;
@@ -175,7 +171,7 @@ public class BoardParser {
             					int y = Integer.parseInt(flipperProperties.get(2).text());
             					Orientation o = Orientation.ZERO;
             					if (flipperProperties.size() > 3) {
-            						o = parseOrientation(flipperProperties.get(flipperProperties.size()-1).text());
+            						o = Orientation.parseOrientation(flipperProperties.get(flipperProperties.size()-1).text());
             					}
             					board.addGadget(new LeftFlipper(name, x, y, o));
             					continue;
@@ -188,7 +184,7 @@ public class BoardParser {
             					int y = Integer.parseInt(flipperProperties.get(2).text());
             					Orientation o = Orientation.ZERO;
             					if (flipperProperties.size() > 3) {
-            						o = parseOrientation(flipperProperties.get(flipperProperties.size()-1).text());
+            						o = Orientation.parseOrientation(flipperProperties.get(flipperProperties.size()-1).text());
             					}
             					board.addGadget(new RightFlipper(name, x, y, o));
             					continue;
@@ -248,7 +244,7 @@ public class BoardParser {
             				String trigger = greatGrandChildren.get(0).text();
             				String action = greatGrandChildren.get(1).text();
             				// TODO Action gets read twice. Can fix with two separate methods in Board
-            				Action actionToTake = Board.readAction(action);
+            				Action actionToTake = Action.fromString(action);
         					
         					if (actionToTake.equals(Action.NONE)) {
         						board.addAction(trigger, action, Board.ActionType.GADGET);
@@ -307,40 +303,7 @@ public class BoardParser {
 		}
 	}
 
-	/**
-	 * Parses the provided string for an Orientation. Leading and trailing whitespace is ignored. 
-	 * 
-	 * "0" = ZERO
-	 * "90" = NINETY
-	 * "180" = ONE_EIGHTY
-	 * "270" =  TWO_SEVENTY
-	 * 
-	 * @param s string to be parsed
-	 * @return the Orientation specified by s or Orientation.ZERO if no match is found. 
-	 */
-	private static Orientation parseOrientation(String s) {
-		Orientation o = Orientation.ZERO;
-		switch (Integer.parseInt(s.trim())) {
-		//	TODO Add a helper method to read these. This code repeats. 
-			case 0: {
-				o = Orientation.ZERO; 
-					break;
-				}
-			case 90: {
-					o = Orientation.NINETY; 
-					break;
-				}
-			case 180: {
-				o = Orientation.ONE_EIGHTY; 
-				break;
-			}
-			case 270: {
-				o = Orientation.TWO_SEVENTY; 
-				break;
-			}
-		}
-		return o;
-	}
+	
 
 
 }
