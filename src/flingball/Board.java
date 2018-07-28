@@ -117,7 +117,7 @@ public class Board extends JPanel{
 
 	// Objects on board
 	private List<Gadget> gadgets = new ArrayList<Gadget>();
-	private List<Ball> balls = new ArrayList<Ball>();
+	private ConcurrentMap<Ball, BallListener> balls = new ConcurrentHashMap<Ball, BallListener>();
 	private Map<Portal, List<String>> portals = new HashMap<Portal, List<String>>();
 	private final Set<Wall> walls = new HashSet<Wall>(Arrays.asList(TOP, BOTTOM, LEFT, RIGHT));
 	
@@ -132,8 +132,10 @@ public class Board extends JPanel{
 	private ConcurrentMap<String, List<Action>> keyUpBoardTriggers = new ConcurrentHashMap<String, List<Action>>();
 	private ConcurrentMap<String, List<Action>> keyDownBoardTriggers = new ConcurrentHashMap<String, List<Action>>();
 	
+	// Track if the board is connected to server
+	private boolean connected = false;
 	// Listeners
-	private Set<BallListener> ballListeners = new HashSet<BallListener>();
+//	private Set<BallListener> ballListeners = new HashSet<BallListener>();
 	private final List<RequestListener> requestListeners = new ArrayList<RequestListener>();
 	
 	public final KeyAdapter keyListener = new KeyAdapter() {
@@ -181,8 +183,7 @@ public class Board extends JPanel{
 			
 			//TODO Check for ball overlaps in bumpers allow portals and absorbers
 		}
-		
-		for (Ball ball : balls) {
+		for (Ball ball : balls.keySet()) {
 			final Vect position = ball.getAnchor();
 			
 			assert position.x() >= 0 : "x < 0: " + ball;
@@ -257,40 +258,46 @@ public class Board extends JPanel{
 	 * @return the listener for the Ball
 	 */
 	public BallListener addBall(Ball ball) {
-		balls.add(ball);
-
-		BallListener listener = new BallListener() {
-			Thread worker;
-			AtomicBoolean running = new AtomicBoolean(false);
-			@Override
-			public void onStart(final double time) {
-				this.running.set(true);
-				this.worker = new Thread(() ->  {
-					while (running.get()) {
-						try {
-						moveOneBall(ball, time);
-						Thread.sleep( (long) (time * 1000));
-						} catch (InterruptedException e) {
-							e.printStackTrace();
+		synchronized (this.balls) {
+	
+			BallListener listener = new BallListener() {
+				Thread worker;
+				AtomicBoolean running = new AtomicBoolean(false);
+				@Override
+				public void onStart(final double time) {
+					this.running.set(true);
+					this.worker = new Thread(() ->  {
+						while (running.get()) {
+							try {
+								moveOneBall(ball, time);
+								Thread.sleep( (long) (time * 1000));
+								} catch (InterruptedException e) {
+									e.printStackTrace();
+								}
 						}
-					}
-				}, ball.name());
-				worker.start();
-			}
-			
-			@Override
-			public void onEnd() {
-				this.running.set(false);
-			}
-			
-			@Override
-			public String name() {
-				return worker.getName();
-			}
-		};
-		this.ballListeners.add(listener);
-		checkRep();
-		return listener;
+					}, ball.name());
+					worker.start();
+				}
+				
+				@Override
+				public void onEnd() {
+					this.running.set(false);
+				}
+				
+				@Override
+				public String name() {
+					return worker.getName();
+				}
+				
+				@Override
+				public String toString() {
+					return ball.name() + " is running? " + this.running;
+				}
+			};
+			this.balls.put(ball, listener);
+			checkRep();
+			return listener;
+		}
 	}
 	
 	
@@ -302,15 +309,9 @@ public class Board extends JPanel{
 	 * @param ball ball to be removed. 
 	 */
 	public void removeBall(Ball ball) {
-		this.balls.remove(ball);
-		for (BallListener listener : this.ballListeners) {
-			if (ball.name().equals(listener.name())) {
-				listener.onEnd();
-				this.ballListeners.remove(listener);
-				break;
-			}
-		}
-		checkRep();
+			this.balls.get(ball).onEnd();
+			this.balls.remove(ball);
+			checkRep();
 	}
 	
 	/**
@@ -444,8 +445,10 @@ public class Board extends JPanel{
 	 * @return a list of balls currently on this flingball board
 	 */
 	public List<Ball> getBalls() {
-		List<Ball> result = new ArrayList<Ball>(this.balls);
-		return result;
+		synchronized (this.balls) {
+			List<Ball> result = new ArrayList<Ball>(this.balls.keySet());
+			return result;
+		}
 	}
 	
 	/**
@@ -465,8 +468,8 @@ public class Board extends JPanel{
 	 */
 	public void play(final double time) {
 		//TODO Add an event queue so that actions that could not be performed are performed at the earliest possible moment
-		for (BallListener listener : this.ballListeners) {
-			listener.onStart(time);
+		for (Ball ball : this.balls.keySet()) {
+			this.balls.get(ball).onStart(time);
 		}
 			checkRep();
 	}
@@ -524,12 +527,7 @@ public class Board extends JPanel{
 			// the collision point. reflect ball should just be an all inclusive method. 
 			// where it is given the collision time and total play time and moves the ball appropriately
 			synchronized (nextGadget) {
-//				try {
-//					Thread.sleep(1000L);
-//				} catch (InterruptedException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
+
 			ball.move(collisionTime, this.gravity, this.friction1, this.friction2);
 			checkRep();
 			
@@ -565,12 +563,12 @@ public class Board extends JPanel{
 					&& ((Portal) nextGadget).isConnected()
 					&& !((Portal) nextGadget).getTargetBboard().equals(this.NAME) 
 					) {
-				// If the ball hits a connected portal teleport it to the appropriate board. 
-				this.removeBall(ball);
-				
-				
-				this.notifyRequestListeners("teleport " + nextGadget.name() + " " + ball.name() + " " + 
-						ball.getVelocity().x() + " " + ball.getVelocity().y());
+				if (this.connected) {
+					// If the ball hits a connected portal teleport it to the appropriate board. 
+					this.removeBall(ball);
+					this.notifyRequestListeners("teleport " + nextGadget.name() + " " + ball.name() + " " + 
+							ball.getVelocity().x() + " " + ball.getVelocity().y());
+				}
 				
 				
 			} else {
@@ -594,8 +592,9 @@ public class Board extends JPanel{
 			}
 			
 			// Move ball during the rest of time after collision has occurred. 
-			if (ball.getVelocity().length() > 0.0 && collisionTime > 0) {
+			if (ball.getVelocity().length() > 0.0 && collisionTime > 0 && !(nextGadget instanceof Portal)) {
 				moveOneBall(ball, time - collisionTime);
+				
 			}
 		} else {
 			ball.move(time, this.gravity, this.friction1, this.friction2);
@@ -624,26 +623,30 @@ public class Board extends JPanel{
 	}
 	
 	/**
-	 * Connects all portals on the board
+	 * Connects all portals on the board. If the board is configures for client-server 
+	 * play then for all portals connect to portals on other boards, a request to connect
+	 * the portal is sent to the server. These portals are connected once a response
+	 * is received from the server. 
 	 */
-	List<String> connectPortals() {
-		List<String> result = new ArrayList<String>();
+	void connectPortals() {
+		
 		for (Portal portal : portals.keySet()) {
 			try {
-				String otherBoard = this.portals.get(portal).get(1);
 				String target = this.portals.get(portal).get(0);
+				String otherBoard = this.portals.get(portal).get(1);
+				
 				if (otherBoard.equals(this.NAME)) {
-					// If connected to a portal on this board bypass the server. 
+					// If connected to a portal on this board bypass the server and establish
+					// the portal connection
 					portal.connect(this.getPortal(target).getCenter(), otherBoard);
-				} else {
-					portal.connect();
-					result.add("connect " + portal.name() + " " + target + " " + otherBoard);
+				} else if (this.connected) {
+					// Otherwise send a request to the server to connect the portal
+					this.notifyRequestListeners("connect " + portal.name() + " " + target + " " + otherBoard);
 				}
 			} catch (NoSuchElementException e) {
 				e.printStackTrace();
 			}	
 		}
-		return result;
 	}
 	
 	/**
@@ -732,7 +735,7 @@ public class Board extends JPanel{
 		
 		final ImageObserver NO_OBSERVER_NEEDED = null;
 		
-		for (Ball ball : balls) {
+		for (Ball ball : this.balls.keySet()) {
 			final Vect anchor = ball.getAnchor().times(L);
 			
 			graphics.drawImage(ball.generate(L), (int) anchor.x(), (int) anchor.y(), NO_OBSERVER_NEEDED);
@@ -805,18 +808,27 @@ public class Board extends JPanel{
 			 break;
 		 }
 		 case "TELEPORT": {
+			 // TELEPORT target ball vx vy
 			 String target = tokens[1];
 			 String name = tokens[2];
-			 Vect center = this.getPortal(target).getCenter();
-			 double vx = Double.parseDouble(tokens[3]);
-			 double vy = Double.parseDouble(tokens[4]);
-			 BallListener listener = this.addBall(new Ball(name, center, new Vect(vx, vy)));
-			 listener.onStart((double) BoardAnimation.FRAME_RATE / 1000);
-			 break;
+			 try {
+				 Vect center = this.getPortal(target).getCenter();
+				 double vx = Double.parseDouble(tokens[3]);
+				 double vy = Double.parseDouble(tokens[4]);
+				 BallListener listener = this.addBall(new Ball(name, center, new Vect(vx, vy)));
+				 listener.onStart((double) BoardAnimation.FRAME_RATE / 1000);
+				 break;
+			 }
+				 catch (NoSuchElementException e) {
+					 throw new RuntimeException("Could not find portal " + target);
+				 }
 		 }
 		 case "CONNECT": {
+			 // connect source targetBoard
+			 // server says the portal with name source is connected to a portal on targetBoard
 			 String portal = tokens[1];
-			 this.getPortal(portal).connect();
+			 String targetBoard = tokens[2];
+			 this.getPortal(portal).connect(targetBoard);
 			 break;
 		 }
 		 
@@ -875,7 +887,19 @@ public class Board extends JPanel{
 		}
 	}
 	
+	/**
+	 * Configures the board for client-server play
+	 */
+	void setMultiplayer() {
+		this.connected = true;
+	}
 	
+	/**
+	 * Configures the board for single player play
+	 */
+	void setSingleplaer() {
+		this.connected = false;
+	}
 	
 	
 	

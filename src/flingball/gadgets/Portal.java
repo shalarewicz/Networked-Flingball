@@ -102,7 +102,7 @@ public class Portal implements Gadget {
 	public double collisionTime(Ball ball) {
 		double collisionTime = Double.POSITIVE_INFINITY;
 		// if the portal is unconnected or self connected then the ball passes over the portal unchanged
-		if (this.connected) {
+		if (this.connected && !this.ballOverlap(ball)) {
 				collisionTime = ball.timeUntilCircleCollision(portal);
 		}
 		return collisionTime;
@@ -183,8 +183,9 @@ public class Portal implements Gadget {
 	/**
 	 * 
 	 * @return the name of the target board
+	 * @throws NullPointerException if the portal is not connected
 	 */
-	public String getTargetBboard() {
+	public String getTargetBboard() throws NullPointerException {
 		return this.targetBoard;
 	}
 	
@@ -216,7 +217,8 @@ public class Portal implements Gadget {
 	/**
 	 * Connects the portal
 	 */
-	public void connect() {
+	public void connect(String targetBoard) {
+		this.targetBoard = targetBoard;
 		this.connected = true;
 	}
 	

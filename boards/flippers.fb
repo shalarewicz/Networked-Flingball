@@ -1,10 +1,10 @@
 board name=Flippers gravity = 25.0
 
 # define a ball
-ball name=BallA x=0.25 y=3.25 xVelocity=0 yVelocity=0
-ball name=BallB x=5.25 y=3.25 xVelocity=0 yVelocity=0 
-ball name=BallC x=10.25 y=3.25 xVelocity=0 yVelocity=0 
-ball name=BallD x=15.25 y=3.25 xVelocity=0 yVelocity=0 
+#ball name=BallA x=0.25 y=3.25 xVelocity=0 yVelocity=0
+#ball name=BallB x=5.25 y=3.25 xVelocity=0 yVelocity=0 
+#ball name=BallC x=10.25 y=3.25 xVelocity=0 yVelocity=0 
+#ball name=BallD x=15.25 y=3.25 xVelocity=0 yVelocity=0 
 ball name=BallE x=19.25 y=3.25 xVelocity=0 yVelocity=0 
 
 # define some left flippers
@@ -33,7 +33,7 @@ triangleBumper name=TriB x=10 y=18 orientation=180
 absorber name=Abs x=0 y=19 width=20 height=1 
 
 #Define a portal connected on Portals
-portal name = PortalD x = 10 y = 10 otherBoard = Portals otherPortal = portalA
+portal name = PortalD x = 9 y = 10 otherBoard = Portals otherPortal = PortalC
 
 
 # define events between gizmos

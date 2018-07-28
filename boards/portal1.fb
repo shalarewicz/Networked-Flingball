@@ -1,0 +1,8 @@
+board name=Portals1 gravity = 5
+
+#define some portals
+
+portal name = PortalA x = 10 y = 0 otherBoard = not otherPortal = PortalA
+portal name = PortalB x = 10 y = 19 otherBoard = Portals2 otherPortal = PortalC
+
+ball name = BallA x = 10.5 y = 10 xVelocity = 0 yVelocity = 7

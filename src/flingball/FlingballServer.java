@@ -34,6 +34,8 @@ public class FlingballServer {
 	
 	final ConcurrentMap<String, String> portals = new ConcurrentHashMap<String, String>();
 	
+	final Set<ConnectionListener> connectionListeners =  ConcurrentHashMap.newKeySet();
+	
 	private final static int DEFAULT_PORT = 10987;
 	/*
 	 * AF() ::= Server listening on a server socket.
@@ -121,12 +123,13 @@ public class FlingballServer {
 		while (true) {
 			// Blocks until a request is accepted
 			Socket s = this.serverSocket.accept();
+			
 			if (s.isConnected()) {
 				BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
 				PrintWriter out = new PrintWriter(s.getOutputStream(), true);
 				
-				final String nameRequest = "NAME?";
 				// Get the name of the board
+				final String nameRequest = "NAME?";
 				out.println(nameRequest);
 				String name;
 				
@@ -134,8 +137,9 @@ public class FlingballServer {
 				while (true) {
 					String input = in.readLine();
 					String[] tokens = input.split(" ");
+					
+					// If the response is not properly formatted re-send the request
 					if (!tokens[0].equals("NAME")) {
-						// If the response is not properly formatted re-send the request
 						out.println(nameRequest);
 					} else {
 						// Otherwise if the board name is already in use send an error message to the client 
@@ -147,31 +151,38 @@ public class FlingballServer {
 									out.println("ERROR: Duplicate Board Name. Connection Terminated");
 									s.close();
 								} else {
+									// Otherwise add the client to the server
 									this.neighbors.put(name, new ConcurrentHashMap<Border, String>());
 									this.boards.put(name, ConcurrentHashMap.newKeySet());
 									this.outputStreams.put(name, out);
 								}
 							} catch (IOException e) {
-								e.printStackTrace();
+								System.err.println("Client connection interupted. " + name + " will be removed from play");
 								// If the connection is interrupted remove the client from the board. 
 								this.removeClient(name);
+								in.close();
+								out.close();
 							}
 						}
 						break;
 					}
 				}
+				
 				// Listen to command line input for h and v join commands. 
+				// This allows users to configure connected boards if they have access to the server. 
 				new Thread(() ->  {
 					try {
 						BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 						for (String command = stdIn.readLine(); command != null; command = stdIn.readLine()) {
+							
 							String join = command.split(" ")[0];
+							
 							if (join.equals("v") || join.equals("h")) {
 								
 								try {
 									this.handleRequest(command, "");
 								} catch (NoSuchElementException nse) {
-									System.out.println("Board(s) not found");
+									System.err.println("Board(s) not found");
 								}
 								this.sendBoardUpdates();
 							} else {
@@ -193,10 +204,13 @@ public class FlingballServer {
 							handleConnection(s, name, in, out);
 						} catch (IOException ioe) {
 							System.err.println("Connection Lost for " + name);
-							ioe.printStackTrace(); // but do not stop serving
+							// TODO Can client sent a quit request?
+							// ioe.printStackTrace(); // but do not stop serving
 						}
 						finally {
 							this.removeClient(name);
+							in.close();
+							out.close();
 							s.close();
 						}
 					} catch (IOException e) {
@@ -214,48 +228,61 @@ public class FlingballServer {
 	 * @param id id of client being removed.
 	 */
 	private void removeClient(String id) {
-		// prevents other boards from accessing clientData
+		// prevent other boards from accessing clientData during removal
 		synchronized (this.boards) {
-			this.boards.remove(id);
-			// Obtain a lock on neighbors so no other threads can send a ball or connect request while connections 
-			// are broken. 
 			synchronized (this.neighbors) {
-				for (Border border : this.neighbors.get(id).keySet()) {
-					this.outputStreams.get(id).println("DISJOIN " + border);
-					this.outputStreams.get(this.neighbors.get(id).get(border)).println("DISJOIN " +  border.complement());;
-				}
-				this.neighbors.remove(id);
-			}
-			synchronized (this.portals) {
-				for (String source : this.portals.keySet()) {
-					if (source.contains(id + "/") || this.portals.get(source).contains(id + "/")) {
-						this.portals.remove(source);
-						this.outputStreams.get(id).println("DISCONNECT " + source.split("/")[1]);
+				synchronized (this.portals) {
+					synchronized (this.outputStreams) {
+						synchronized (this.connectionListeners) {
+							// TODO Can I just say synchronized (this)
+				
+							this.boards.remove(id);
+							
+							// Revert walls of any board connected to this board
+							for (Border border : this.neighbors.get(id).keySet()) {
+								this.outputStreams.get(id).println("DISJOIN " + border);
+								this.outputStreams.get(this.neighbors.get(id).get(border)).println("DISJOIN " +  border.complement());;
+							}
+							
+							this.neighbors.remove(id);
+							
+							// Send disconnect Requests to all portals where the target was on this board. 
+							for (String source : this.portals.keySet()) {
+								if (source.contains(id + "/") || this.portals.get(source).contains(id + "/")) {
+									this.portals.remove(source);
+									this.outputStreams.get(id).println("DISCONNECT " + source.split("/")[1]);
+								}
+							}
+							
+							this.outputStreams.remove(id);
+							
+							// Remove this boards listeners
+							for (ConnectionListener l : this.connectionListeners) {
+								if (l.listener().equals(id)) {
+									this.connectionListeners.remove(l);
+								}
+							}
+						}
 					}
 				}
 			}
-			this.outputStreams.remove(id);
 		}
 	}
 	
 	 /**
      * Handle a single client connection.
-     * Returns when the client disconnects.
+     * Returns when the client connection is interrupted. 
      * 
      * @param socket socket connected to client
      * @param clientID ID of the client being handled
+     * @param in input stream for the socket. This stream is not closed by the method
+     * @param out output stream for the socket. This stream is not closed by the method
      * @throws IOException if the connection encounters an error or closes unexpectedly
      */
     private void handleConnection(Socket socket, String clientID, BufferedReader in, PrintWriter out) throws IOException{
     	for (String input = in.readLine(); input != null; input = in.readLine()) {
         	try {
         		handleRequest(input, String.valueOf(clientID));
-        		
-        		// If the client quits remove the client from connected server play
-        		if (input.equals("quit")) {
-        			this.removeClient(clientID);
-        			socket.close();
-        		}
         		
         		this.sendBoardUpdates();
         		
@@ -265,31 +292,15 @@ public class FlingballServer {
         		out.println(nse.getMessage());
         	}
         }
-        out.close();
-        in.close();
 	}
     
-    /**
-     * Send any responses to all connected boards
-     */
-    private void sendBoardUpdates() {
-    	// Sends updates to boards connected to the server (i.e. if two boards are joined or a ball is teleported.)
-    	for (String board : this.outputStreams.keySet()) {
-			PrintWriter boardOut = this.outputStreams.get(board);
-			for (String response : this.boards.get(board)) {
-				boardOut.println(response);
-			}
-			this.boards.get(board).clear();
-		}
-    }
-    
     
     /**
-     * Handle a single client request and return the server response.
+     * Handle a single client request and sends a response back to the client and other 
+     * clients if necessary.
      * 
      * @param input message from client
      * @param id id of player making the request
-     * @return output message to client
      * @throws NoSuchElementException if the request involves an unconnected board. 
      */
     private void handleRequest(String input, String id) throws NoSuchElementException {
@@ -301,7 +312,7 @@ public class FlingballServer {
     		 
     		 if (this.boards.keySet().contains(left) && this.boards.keySet().contains(right)) {
     			 
-    			 synchronized (this.neighbors ) {
+    			 synchronized (this.neighbors ) { // h nameLeft nameRight
     				 
     				 // If the boards are not already connected remove the existing connection
     				 if (this.neighbors.containsKey(left) && this.neighbors.get(left).containsKey(Border.RIGHT) && !this.neighbors.get(left).get(Border.RIGHT).equals(right)) {
@@ -314,6 +325,8 @@ public class FlingballServer {
     				 // Send join requests to the newly boards
 	    			 this.boards.get(left).add("JOIN RIGHT");
 	    			 this.boards.get(right).add("JOIN LEFT");
+	    			 
+	    			 // Document the connection in the rep
 	    			 this.neighbors.get(left).put(Border.RIGHT, right);
 	    			 this.neighbors.get(right).put(Border.LEFT, left);
     			 }
@@ -322,7 +335,7 @@ public class FlingballServer {
     		 }
     		 
     	 }
-    	 else if (tokens[0].equals("v")) {
+    	 else if (tokens[0].equals("v")) { // v nameTop nameBottom
     		 String top = tokens[1];
     		 String bottom = tokens[2];
     		 
@@ -339,6 +352,8 @@ public class FlingballServer {
 	    			 // Send join requests to the newly boards
 	    			 this.boards.get(top).add("JOIN BOTTOM");
 	    			 this.boards.get(bottom).add("JOIN TOP");
+	    			 
+	    			 // Document the connection in the rep
 	    			 this.neighbors.get(top).put(Border.BOTTOM, bottom);
 	    			 this.neighbors.get(bottom).put(Border.TOP, top);
     			 }
@@ -347,8 +362,7 @@ public class FlingballServer {
     		 }
     		 
     	 }
-    	 else if (tokens[0].equals("addBall")) {
-    		 // addBall NEIGHBOR NAME X Y VX VY
+    	 else if (tokens[0].equals("addBall")) { // addBall NEIGHBOR NAME X Y VX VY
     		 String neighbor = tokens[1]; 
     		 synchronized (this.neighbors) {
 	    		 final String name = this.neighbors.get(id).get(Border.fromString(neighbor));
@@ -368,20 +382,44 @@ public class FlingballServer {
     		 }
     		 
     	 } 
-    	 else if (tokens[0].equals("connect")) {
-    		 // connect sourcePortal targetPortal targetBoard
+    	 else if (tokens[0].equals("connect")) { // connect sourcePortal targetPortal targetBoard
     		 String source = tokens[1];
     		 String target = tokens[2];
     		 String targetBoard = tokens[3];
+    		 
     		 synchronized (this.boards) {
+    			 // Document the connection in the rep
     			 this.portals.put(id + "/" + source, targetBoard + "/" + target);
-    			 this.boards.get(id).add("CONNECT " + source);
+    			 
+    			 
+    			 // If the targetBoard is connected to the server then connect the portal
+    			 if (this.boards.containsKey(targetBoard)) {
+    				 outputStreams.get(id).println("CONNECT " + source + " " + targetBoard);
+    			 } else {
+    				 // Otherwise create a listener to wait for the target board to connect
+	    			 this.connectionListeners.add(new ConnectionListener() {
+	    				 @Override
+	    				 public void onConnection() {
+	    					 outputStreams.get(id).println("CONNECT " + source + " " + targetBoard);
+	    				 }
+	    				 
+	    				 @Override
+	    				 public String listeningFor() {
+	    					 return targetBoard;
+	    				 }
+	    				 
+	    				 @Override
+	    				 public String listener() {
+	    					 return id;
+	    				 }
+	    			 });
+    			 }
     		 }
     		 
     	 } 
     	 
-    	 else if (tokens[0].equals("teleport")) {
-    		 // teleport sourcePortal ballName xVelocity yVelocity
+    	 else if (tokens[0].equals("teleport")) {// teleport sourcePortal ballName xVelocity yVelocity
+    		 
     		 String source = tokens[1];
     		 
     		 String[] destination = this.portals.get(id + "/" + source).split("/");
@@ -395,15 +433,61 @@ public class FlingballServer {
 			 this.boards.get(targetBoard).add("TELEPORT " + target + " " + ball + " " + vx + " " + vy);
     	 }
     	 
-    	 else if (tokens[0].equals("START")) {
-    		 // Indicates the server is ready to play with a board. This is used to allow for all portal connections to be established before play is started. 
+    	 else if (tokens[0].equals("START")) { // Indicates that the Board is ready to start gameplay
+    		 
+    		 // let other boards know that this board is ready and portals can be connected. 
+    		 this.notifyConnectionListeners(id);
+    		 try {
+    			 //TODO Remove this. Boards need time to connect their portas
+				Thread.sleep(1000L);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
     		 this.boards.get(id).add("READY");
+    		 
     	 } 
     	 
     	 else {
     		 throw new UnsupportedOperationException(input);
     	 }
      	 
+    }
+    
+    /**
+     * Send any responses to all connected boards
+     */
+    private void sendBoardUpdates() {
+    	// Sends updates to boards connected to the server (i.e. if two boards are joined or a ball is teleported.)
+    	for (String board : this.outputStreams.keySet()) {
+			PrintWriter boardOut = this.outputStreams.get(board);
+			for (String response : this.boards.get(board)) {
+				boardOut.println(response);
+			}
+			this.boards.get(board).clear();
+		}
+    }
+    
+    /**
+     * Notify boards that client name is ready to play. 
+     * @param name
+     */
+    private void notifyConnectionListeners(String id) {
+    	for (ConnectionListener listener : this.connectionListeners) {
+    		if (id.equals(listener.listeningFor())) {
+    			listener.onConnection();
+    			// Listener is not removed to allow the client to disconnect and then
+    			// reconnect while maintaining portal connections. 
+    		}
+    	}
+    }
+    private interface ConnectionListener {
+    	
+    	public void onConnection();
+    	
+    	public String listeningFor();
+    	
+    	public String listener();
     }
     
 }

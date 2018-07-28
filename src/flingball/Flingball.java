@@ -66,18 +66,29 @@ public class Flingball {
     			Board board = readFile(file);
     		
     			if (cmd.hasOption("host")) {
+    				String hst = cmd.getOptionValue("host");
     				try {
-    					connect(board, prt, cmd.getOptionValue("host"));
-    				} catch (UnknownHostException uhe) {
-    					System.err.println("Could not connect to host " + cmd.getOptionValue("host"));
-    					System.err.println("Plaing in single player");
+    					connect(board, prt, hst);
+    					connectBoard(hst, prt, "boards/flippers.fb");
+//    					try {
+//							Thread.sleep(1000L);
+//						} catch (InterruptedException e) {
+//							// TODO Auto-generated catch block
+//							e.printStackTrace();
+//						}
+//    					connectBoard(hst, prt, "boards/portals.fb");
     				} catch (IOException ioe) {
-    					System.err.println("Server Connection interupted");
+    					System.err.println(ioe.getMessage());
+    					System.err.println("Could not connect to " + hst + ":" + prt + ". Playing in Singleplayer");
+    					board.connectPortals();
+        				new BoardAnimation(board);
+        				
     				} 
+	    		} else {
+	    			//Otherwise connect the portals and begin gameplay in singleplayer
+    				board.connectPortals();
+    				new BoardAnimation(board);
 	    		}
-    			
-    			board.connectPortals();
-    			new BoardAnimation(board);
     		
     		} catch (IOException e) {
     			System.out.println(file + " not found");
@@ -94,28 +105,61 @@ public class Flingball {
     	}
 			
 	}
+    // TODO Remove for testing only
+    private static void connectBoard(String host, int port, String file) throws IOException{
+    	new Thread(() -> {
+    		try {
+    		Board board = readFile(file);
+			connect(board, port, host);
+    		} catch (IOException | UnableToParseException e) {
+				try {
+					throw e;
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}
+    	}).start();
+    	
+    }
     
+    /**
+     * Constructs a flingball board from the provided file
+     * @param file must be a ."fb" file specifying a flingball board
+     * @return board specified by file
+     * @throws IOException if there is a problem reading the file
+     * @throws UnableToParseException if the fb file is not properly formatted
+     */
     private static Board readFile(String file) throws IOException, UnableToParseException{
 			Path filePath = Paths.get(file);
 			Stream<String> fileIn = Files.lines(filePath);
 			StringBuilder boardFile = new StringBuilder();
 			fileIn.forEach(s -> boardFile.append(s + "\n"));
 			fileIn.close();
-			System.out.println("Input: \n" + boardFile);
 			final Board board = BoardParser.parse(boardFile.toString());
 			return board;
     }
     
-    
+    /**
+     * Connects a client to a flingball server and begins gameplay or joins ongoing gameplay. 
+     * Clients have the ability to connect any board also connected to the server through the 
+     * command line inputs v or h followed by two valid board names. 
+     * @param board - the board the client is playing with
+     * @param prt - port the number the server is listening on
+     * @param hostAdress - IP address of the server
+     * @throws UnknownHostException - If the IP address of the host could not be determined
+     * @throws IOException - if an I/O error occurs during the connection
+     */
     private static void connect(Board board, final int prt, String hostAdress) throws UnknownHostException, IOException {
 		Socket socket = new Socket(hostAdress, prt);
 		PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 		BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-		
+		// Set the board for client server play
+		board.setMultiplayer();
 		
 		
 		// Add a listener for sending requests to the server when the board changes. For example, 
-		// if a ball moves to another board. 
+		// if a ball moves to another board a request to move the ball is sent to the server.
 		board.addRequestListener(new RequestListener() {
 			@Override
 			public void onRequest(String request) {
@@ -123,7 +167,7 @@ public class Flingball {
 			}
 		});
 		
-		// Listen to command line input for h and v join commands. 
+		// Listen for command line input for h and v join commands. 
 		new Thread(() ->  {
 			try {
 				BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
@@ -145,13 +189,13 @@ public class Flingball {
 		// Listen for server responses and send them to the board for processing
 		try {
 			for (String response = in.readLine(); response != null; response = in.readLine()) {
+				// Server asking for the board name. 
 				if (response.equals("NAME?")) {
 					out.println("NAME " + board.NAME);
 					
-					// Connect portal to portals on other boards. 
-					for (String portalConnection : board.connectPortals()) {
-						out.println(portalConnection);
-					}
+					// Process connections for every portal on the board. 
+					board.connectPortals();
+					
 					out.println("START");
 				}
 				else if (response.equals("READY")) {
@@ -175,5 +219,6 @@ public class Flingball {
 			socket.close();
 		}
     }
+    
     
 }
