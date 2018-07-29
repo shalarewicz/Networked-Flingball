@@ -1,10 +1,7 @@
 package flingball;
 
-import java.awt.Color;
-import java.awt.Graphics;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.image.ImageObserver;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,8 +13,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.swing.JPanel;
 
 import flingball.gadgets.*;
 import physics.Physics;
@@ -82,12 +77,8 @@ import physics.Vect;
  * NAME ::= [A-Za-z_][A-Za-z_0-9]*
  * 
  */
-public class Board extends JPanel{
+public class Board {
 	
-	/**
-	 *TODO What is this?
-	 */
-	private static final long serialVersionUID = 1L;
 
 	// Default Values
 	public static final int GADGET_LIMIT = 60;
@@ -105,10 +96,7 @@ public class Board extends JPanel{
 	private final Wall RIGHT = new Wall("RIGHT", WIDTH, 0, WIDTH, -HEIGHT);
 	private final int[][] gadgetCoverage = new int[WIDTH + 1][HEIGHT + 1];
 	
-	/**
-	 * A board is 20 L x 20 L wide. where L is the number of pixels. 
-	 */
-	static final int L = 40;
+
 	
 	// Default Constants
 	private double gravity = DEFAULT_GRAVITY;
@@ -728,32 +716,6 @@ public class Board extends JPanel{
 	}
 	
 	@Override
-	public void paint(Graphics graphics) {
-		super.paint(graphics);
-		graphics.setColor(Color.BLACK);
-		graphics.fillRect(0, 0, this.WIDTH * L, this.HEIGHT * L);
-		
-		final ImageObserver NO_OBSERVER_NEEDED = null;
-		
-		for (Ball ball : this.balls.keySet()) {
-			final Vect anchor = ball.getAnchor().times(L);
-			
-			graphics.drawImage(ball.generate(L), (int) anchor.x(), (int) anchor.y(), NO_OBSERVER_NEEDED);
-					
-		}
-		
-		//TODO Use listeners so that gadgets are only drawn when they change. 
-		for (Gadget gadget : gadgets) {
-			final int xAnchor = (int) gadget.position().x()*L;
-			final int yAnchor = (int) gadget.position().y()*L;
-			
-			graphics.drawImage(gadget.generate(L), xAnchor, yAnchor, NO_OBSERVER_NEEDED);
-			
-		}
-	}
-	
-	
-	@Override
 	public String toString() {
 		StringBuilder result = new StringBuilder();
 		result.append("FLINGBALL BOARD:{ Specs:" + this.NAME + ", Gravity: " + this.gravity);
@@ -804,7 +766,7 @@ public class Board extends JPanel{
 			 double vx = Double.parseDouble(tokens[4]);
 			 double vy = Double.parseDouble(tokens[5]);
 			 BallListener listener = this.addBall(new Ball(name, new Vect(x, y), new Vect(vx, vy)));
-			 listener.onStart((double) BoardAnimation.FRAME_RATE / 1000);
+			 listener.onStart((double) BoardAnimation.getFrameRate() / 1000);
 			 break;
 		 }
 		 case "TELEPORT": {
@@ -816,7 +778,7 @@ public class Board extends JPanel{
 				 double vx = Double.parseDouble(tokens[3]);
 				 double vy = Double.parseDouble(tokens[4]);
 				 BallListener listener = this.addBall(new Ball(name, center, new Vect(vx, vy)));
-				 listener.onStart((double) BoardAnimation.FRAME_RATE / 1000);
+				 listener.onStart((double) BoardAnimation.getFrameRate() / 1000);
 				 break;
 			 }
 				 catch (NoSuchElementException e) {

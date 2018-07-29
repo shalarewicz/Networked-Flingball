@@ -21,6 +21,7 @@ import edu.mit.eecs.parserlib.UnableToParseException;
  * If FILE is not provided, then your Flingball client should run the default benchmark board as described in the phase 1 specification.
  */
 public class Flingball {
+	final static int L = BoardAnimation.DEFAULT_L;
     
     /**
      * Usage:
@@ -81,13 +82,13 @@ public class Flingball {
     					System.err.println(ioe.getMessage());
     					System.err.println("Could not connect to " + hst + ":" + prt + ". Playing in Singleplayer");
     					board.connectPortals();
-        				new BoardAnimation(board);
+        				new BoardAnimation(board, L);
         				
     				} 
 	    		} else {
 	    			//Otherwise connect the portals and begin gameplay in singleplayer
     				board.connectPortals();
-    				new BoardAnimation(board);
+    				new BoardAnimation(board, L);
 	    		}
     		
     		} catch (IOException e) {
@@ -200,7 +201,7 @@ public class Flingball {
 				}
 				else if (response.equals("READY")) {
 					//Start the game
-						new BoardAnimation(board);
+						new BoardAnimation(board, L);
 					
 				}
 				else if (response.split(" ")[0].equals("ERROR:")) {
