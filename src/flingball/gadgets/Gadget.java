@@ -1,19 +1,17 @@
-
 package flingball.gadgets;
 
 import java.awt.image.BufferedImage;
-
+import physics.*;
 import flingball.Ball;
 
-//TODO Create a separate interface for absorber and wall;
-// Gadget interface, Bumper, Absorber, Wall interfaces which extend Gadget
 
 /**
  * A Gadget is an object that can be placed on a flingball board or used to construct a flingball board. 
  * 
  * A gadgets position must have coordinates >= 0;
+ * 
+ * @author Stephan Halarewicz
  */
-import physics.*;
 
 public interface Gadget {
 	
@@ -80,8 +78,7 @@ public interface Gadget {
 	
 	/**
 	 * Determines if a ball and a gadget overlap.
-	 * TODO Remove this. Not necessary if new balls places in the center of grid spaces. Balls cannot have diameter > 1L
-	 * @param ball
+	 * @param ball The ball that will be checked for an overlap with this gadget
 	 * @return true if the ball and gadget overlap
 	 */
 	public boolean ballOverlap(Ball ball);
@@ -89,7 +86,6 @@ public interface Gadget {
 		
 	/**
 	 * Generates an image of the gadget. 
-	 * 
 	 * @return a BufferedImage representation of the gadget. 
 	 */
 	public BufferedImage generate(int L);
@@ -101,9 +97,8 @@ public interface Gadget {
 	 */
 	void setCoverage(int[][] coverage);
 		
+	
 	public final static String NO_TRIGGER = "NO_TRIGGER";
-	public final static double DEFAULT_REFLECTION_COEFF = 1.0;
-	public final static double DEFAULT_FLIPPER_REFLECTION_COEFF = 0.95;
 	
 	@Override
 	public int hashCode();

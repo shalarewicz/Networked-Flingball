@@ -1,7 +1,3 @@
-/**
- * Author:
- * Date:
- */
 package flingball.gadgets;
 
 import java.awt.Color;
@@ -13,33 +9,31 @@ import physics.Circle;
 import physics.Physics;
 import physics.Vect;
 
+/**
+ * CircleBumper represents a circular bumper which can be played
+ * as a gadget on a flingball board. A CircleBumper has a radius of
+ * 0.5 L and its anchor is located in the upper left-hand corner of
+ * its bounding box, which has dimensions 1L x 1L
+ * 
+ * A CircleBumper has no default action but can trigger a provided Board Action
+ * @author Stephan Halarewicz
+ */
 public class CircleBumper implements Bumper {
-	
-	
-	/**
-	 * CircleBumper represents a circular bumper which can be played
-	 * as a gadget on a flingball board. A CircleBumper has a radius of
-	 * 0.5 L and its anchor is located in the upper left-hand corner of
-	 * its bounding box, which has dimensions 1L x 1L
-	 * 
-	 * A CircleBumper has no default action but can trigger a provided Board Action
-	 */
-	
+
 	private String name;
 	private final int x, y;
 	private final int WIDTH = 1;
 	private final int HEIGHT = 1;
-		
+	
 	private final double radius = 0.5;
-	private double reflectionCoeff = Gadget.DEFAULT_REFLECTION_COEFF;
 	private final Circle bumper;
+
 	private String trigger = NO_TRIGGER;
+	private Double reflectionCoeff = Bumper.DEFAULT_REFLECTION_COEFF;
 	
 	//TODO Add support for spinning bumpers which are turned on and off by actions
 		//	private static final double SPIN_RATE = 5.0;
 		//	private double spin = 0;
-	
-	
 	
 	/*
 	 * AF(x, y, RADIUS, name, bumper, trigger) ::= 
@@ -49,10 +43,12 @@ public class CircleBumper implements Bumper {
 	 * 		bumper has center (x,y) and radius radius. 
 	 * 		0 <= reflectionCoeff <= 1
 	 * Safety from rep exposure
-	 * 		TODO
-	 * 
+	 * 		Only immutable or primitive types are ever returned. 
 	 * Thread Safety Argument
-	 * 		TODO
+	 * 		All fields except trigger and reflectionCoeff are final or immutable. 
+	 * 		The elements of the set walls are never modified and Wall is immutable. 
+	 * 		Locks are obtained before using or changing trigger or reflectionCoeff
+	 * 		
 	 */
 	private void checkRep() {
 		assert bumper.getCenter().x() == x + radius : "CircleBumper: " + name + " x coordinates inequal";
@@ -62,6 +58,12 @@ public class CircleBumper implements Bumper {
 	}
 
 	
+	/**
+	 * Create a new circle bumper at the position (x,y) on a flingball board
+	 * @param name Name of the square bumper
+	 * @param x x-coordinate of the bumper on a flingball board
+	 * @param y y-coordinate of the bumper on a flingball board
+	 */
 	public CircleBumper(String name, int x, int y) {
 		this.x = x;
 		this.y = -y;
@@ -91,14 +93,18 @@ public class CircleBumper implements Bumper {
 		return this.WIDTH;
 	}
 	
-	@Override 
+	@Override
 	public double getReflectionCoefficient() {
-		return this.reflectionCoeff;
+		synchronized (this.reflectionCoeff) {
+			return this.reflectionCoeff;
+		}
 	}
 	
-	@Override 
-	public void setReflectionCoefficient(double x) {
-		this.reflectionCoeff = x;
+	@Override
+	public synchronized void setReflectionCoefficient(double x) {
+		synchronized (this.reflectionCoeff) {
+			this.reflectionCoeff = x;
+		}
 	}
 
 	@Override
@@ -108,12 +114,16 @@ public class CircleBumper implements Bumper {
 
 	@Override
 	public String getTrigger() {
-		return this.trigger;
+		synchronized (this.trigger) {
+			return this.trigger;
+		}
 	}
 	
 	@Override
 	public void setTrigger(String trigger) {
-		this.trigger = trigger;
+		synchronized (this.trigger) {
+			this.trigger = trigger;
+		}
 	}
 
 	@Override

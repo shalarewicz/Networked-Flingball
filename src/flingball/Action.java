@@ -1,10 +1,11 @@
 package flingball;
 
 /**
+ * A list of actions that can be set on a flingball board. These actions are board actions
+ * that do not affect or rely on any single gadget's default action and can be triggered 
+ * by any gadget on the board. 
  * 
- * @author Stephan Halarewicz
- *
- *A list of actions that can be set on a flingball board
+ * Board Actions cannot be triggered by key strokes.
  *
  *<ol>
  *	<lli>FIRE_ALL - Fires all trapped balls.</li>
@@ -19,6 +20,7 @@ package flingball;
  *	<li>REMOVE_BALL - Removes a random ball from the board</li>
  *</ol>
  *
+ * @author Stephan Halarewicz
  */
 public enum Action {
 	FIRE_ALL, ADD_BALL, ADD_SQUARE, ADD_CIRCLE, ADD_TRIANGLE, ADD_ABSORBER, REVERSE_BALLS,

@@ -2,11 +2,16 @@ package flingball;
 
 import java.util.NoSuchElementException;
 
-
+/**
+ * Possible positions of an outer wall on a flingball board. 
+ * @author Stephan Halarewicz
+ *
+ */
 enum Border {
 	TOP, BOTTOM, LEFT, RIGHT;
 	
 	/**
+	 * Returns the complement of this Border. 
 	 * Complements are as follows
 	 * TOP - BOTTOM
 	 * LEFT - RIGHT
@@ -29,8 +34,8 @@ enum Border {
 	
 	/**
 	 * Parses a string for a Border. Valid values include "TOP", "BOTTOM", "LEFT" and "RIGHT"
-	 * @param s 
-	 * @return the Border which matches the string. 
+	 * @param s <code>String</code> to be read
+	 * @return the <code>Border</code> which matches the string. 
 	 * @throws NoSuchElementException if the string could not be parsed. 
 	 */
 	static Border fromString(String s) throws NoSuchElementException{

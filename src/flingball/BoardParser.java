@@ -63,13 +63,12 @@ public class BoardParser {
 
         // make an AST from the parse tree
 		final Board board = makeAbstractSyntaxTree(parseTree);
-		board.connectPortals();
 		return board;
 	}
 	
 	private static Board makeAbstractSyntaxTree(final ParseTree<BoardGrammar> parseTree) {
 		//TODO Restructure this methods by creating a second makeAST method where one parameter is a board. 
-		// This will get rid of any confusion when it coes to nesting. 
+		// This will get rid of any confusion when it comes to nesting. 
 		switch (parseTree.name()) {
         case BOARD: //  BOARD ::= boardName '\n'* ((comment '\n'*) | (command '\n'*))* ;
             {
@@ -138,7 +137,11 @@ public class BoardParser {
             					final int y = Integer.parseInt(bumperProperties.get(2).text());
             					Orientation o = Orientation.ZERO;
             					if (bumperProperties.size() > 2) {
-            						o = Orientation.parseOrientation(bumperProperties.get(bumperProperties.size()-1).text());
+            						try {
+										o = Orientation.parseOrientation(bumperProperties.get(bumperProperties.size()-1).text());
+									} catch (UnableToParseException e) {
+										throw new RuntimeException("Should never get here. Cannot parse orientation " + bumperProperties.get(bumperProperties.size()-1).text());
+									}
             					}
             					board.addGadget(new TriangleBumper(name, x, y, o));
             					continue;
@@ -171,7 +174,11 @@ public class BoardParser {
             					int y = Integer.parseInt(flipperProperties.get(2).text());
             					Orientation o = Orientation.ZERO;
             					if (flipperProperties.size() > 3) {
-            						o = Orientation.parseOrientation(flipperProperties.get(flipperProperties.size()-1).text());
+            						try {
+										o = Orientation.parseOrientation(flipperProperties.get(flipperProperties.size()-1).text());
+									} catch (UnableToParseException e) {
+										throw new RuntimeException("Should never get here. Cannot parse orientation " + flipperProperties.get(flipperProperties.size()-1).text());
+									}
             					}
             					board.addGadget(new LeftFlipper(name, x, y, o));
             					continue;
@@ -184,7 +191,11 @@ public class BoardParser {
             					int y = Integer.parseInt(flipperProperties.get(2).text());
             					Orientation o = Orientation.ZERO;
             					if (flipperProperties.size() > 3) {
-            						o = Orientation.parseOrientation(flipperProperties.get(flipperProperties.size()-1).text());
+            						try {
+										o = Orientation.parseOrientation(flipperProperties.get(flipperProperties.size()-1).text());
+									} catch (UnableToParseException e) {
+										throw new RuntimeException("Should never get here. Cannot parse orientation " + flipperProperties.get(flipperProperties.size()-1).text());
+									}
             					}
             					board.addGadget(new RightFlipper(name, x, y, o));
             					continue;

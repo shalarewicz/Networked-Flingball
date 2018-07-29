@@ -1,7 +1,3 @@
-/**
- * Author:
- * Date:
- */
 package flingball.gadgets;
 
 import java.awt.Color;
@@ -16,26 +12,24 @@ import java.util.Set;
 import flingball.Ball;
 import physics.Vect;
 
+/**
+ * SquareBumper represents a square bumper which can be played
+ * as a gadget on a flingball board. A SquareBumper has a height and 
+ * width of 1 L and its anchor is located in the upper left-hand corner 
+ * 
+ * A SquareBumper has no default action but can trigger a provided Board Action
+ * @author Stephan Halarewicz
+ */
 public class SquareBumper implements Bumper {
-	
-	/**
-	 * SquareBumper represents a square bumper which can be played
-	 * as a gadget on a flingball board. A SquareBumper has a height and 
-	 * width of 1 L and its anchor is located in the upper left-hand corner 
-	 * 
-	 * A SquareBumper has no default action but can trigger a provided Board Action
-	 */
 	
 	private final String name;
 	private final int x, y;
 	private final int WIDTH = 1;
 	private final int HEIGHT = 1;
 	
-	private double reflectionCoeff = Gadget.DEFAULT_REFLECTION_COEFF;
+	private Double reflectionCoeff = Bumper.DEFAULT_REFLECTION_COEFF;
 	private String trigger = Gadget.NO_TRIGGER;
-	
-	
-	
+
 	private final Set<Wall> walls;
 	
 
@@ -49,9 +43,12 @@ public class SquareBumper implements Bumper {
 	 * 			[(x+width,y), (x+width, y+height)], [(x,y+height), (x+width, y+height)]
 	 * 		0 <= reflectionCoeff <= 1
 	 * Safety from rep exposure
-	 * 		TODO
+	 * 		Only immutable or primitive types are ever returned. 
 	 * Thread Safety Argument
-	 * 		TODO
+	 * 		All fields except trigger and reflectionCoeff are final or immutable. 
+	 * 		The elements of the set walls are never modified and Wall is immutable. 
+	 * 		Locks are obtained before using or changing trigger or reflectionCoeff
+	 * 		
 	 */
 	
 	private void checkRep() {
@@ -83,9 +80,17 @@ public class SquareBumper implements Bumper {
 		assert endPoints.size() == 4;
 		assert endPoints.containsKey(new Vect(x, y)) && endPoints.containsKey(new Vect(x + 1, y - 1));
 		
-		assert 0 <= reflectionCoeff && reflectionCoeff <=1 : "SquareBumper: " + name + " invalid reflection coefficient";
+		synchronized (this.reflectionCoeff) {
+			assert 0 <= reflectionCoeff && reflectionCoeff <=1 : "SquareBumper: " + name + " invalid reflection coefficient";
+		}
 	}
 	
+	/**
+	 * Create a new square bumper at the position (x,y) on a flingball board
+	 * @param name Name of the square bumper
+	 * @param x x-coordinate of the bumper on a flingball board
+	 * @param y y-coordinate of the bumper on a flingball board
+	 */
 	public SquareBumper(String name, int x, int y) {
 		this.name = name;
 		this.x = x;
@@ -102,6 +107,12 @@ public class SquareBumper implements Bumper {
 		
 	}
 	
+	/**
+	 * Create a new square bumper at the position represented by <code>position</code> on a 
+	 * flingball board
+	 * @param name Name of the square bumper.
+	 * @param position position on a flingball board. 
+	 */
 	public SquareBumper(String name, Vect position) {
 		this.name = name;
 		int x = (int) position.x();
@@ -142,12 +153,16 @@ public class SquareBumper implements Bumper {
 	
 	@Override
 	public double getReflectionCoefficient() {
-		return this.reflectionCoeff;
+		synchronized (this.reflectionCoeff) {
+			return this.reflectionCoeff;
+		}
 	}
 	
 	@Override
-	public void setReflectionCoefficient(double x) {
-		this.reflectionCoeff = x;
+	public synchronized void setReflectionCoefficient(double x) {
+		synchronized (this.reflectionCoeff) {
+			this.reflectionCoeff = x;
+		}
 	}
 
 	@Override
@@ -159,15 +174,18 @@ public class SquareBumper implements Bumper {
 		return collisionTime;
 	}
 
-
 	@Override
 	public String getTrigger() {
-		return this.trigger;
+		synchronized (this.trigger) {
+			return this.trigger;
+		}
 	}
 	
 	@Override
 	public void setTrigger(String trigger) {
-		this.trigger = trigger;
+		synchronized (this.trigger) {
+			this.trigger = trigger;
+		}
 	}
 
 	@Override
@@ -191,9 +209,7 @@ public class SquareBumper implements Bumper {
 				wall.reflectBall(ball);
 			}
 		}
-		//throw new RuntimeException("Should never get here. Ball did not collide with SquareBumper");
 	}
-	
 	
 	@Override
 	public String toString() {
@@ -202,7 +218,6 @@ public class SquareBumper implements Bumper {
 	
 	@Override
 	public int hashCode() {
-		// Does this create a problem for a square and circle bumper in the same spot?
 		return this.x + this.y;
 	}
 	
@@ -214,7 +229,6 @@ public class SquareBumper implements Bumper {
 	private boolean samePosition(SquareBumper that) {
 		return this.x == that.x && this.y == that.y;
  	}
-	
 	
 	@Override
 	public boolean ballOverlap(Ball ball) {
@@ -247,6 +261,4 @@ public class SquareBumper implements Bumper {
 		int y = (int) this.position().y();
 		coverage[y][x] = 1;
 	}
-	
-
 }

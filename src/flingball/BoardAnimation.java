@@ -122,6 +122,14 @@ public class BoardAnimation {
     		
     		final ImageObserver NO_OBSERVER_NEEDED = null;
     		
+    		for (Gadget gadget : board.getGadgets()) {
+    			final int xAnchor = (int) gadget.position().x()*L;
+    			final int yAnchor = (int) gadget.position().y()*L;
+    			
+    			g2d.drawImage(gadget.generate(L), xAnchor, yAnchor, NO_OBSERVER_NEEDED);
+    			
+    		}
+    		
     		graphics.setColor(Color.BLUE);
     		for (Ball ball : board.getBalls()) {
     			final Vect anchor = ball.getAnchor().times(L);
@@ -131,13 +139,6 @@ public class BoardAnimation {
     					
     		}
     		
-    		for (Gadget gadget : board.getGadgets()) {
-    			final int xAnchor = (int) gadget.position().x()*L;
-    			final int yAnchor = (int) gadget.position().y()*L;
-    			
-    			g2d.drawImage(gadget.generate(L), xAnchor, yAnchor, NO_OBSERVER_NEEDED);
-    			
-    		}
     		
             g2d.dispose();
         }

@@ -33,12 +33,11 @@ import physics.Vect;
 public class Portal implements Gadget {
 	
 	private final int x, y;
-	private Vect target;
 	private final String name;
 	private final Circle portal;
 	private boolean connected = false;
 	private String targetBoard;
-	//TODO is it worth keeping track of the target portal name?
+	private Vect target; //TODO Remove this. This is only for single player games. 
 	
 	
 	private static final double RADIUS = 0.5;
@@ -167,11 +166,11 @@ public class Portal implements Gadget {
 	}
 
 	/**
-	 * Establishes a one way connection between this portal that. A ball that 
+	 * Establishes a one way connection between this portal that. A <code>ball</code> that 
 	 * collides with this portal will be teleported to that and exit with the 
 	 * same velocity and direction. 
-	 * @param target
-	 * @param targetBoard name of the Board that target is on 
+	 * @param target name of the <code>portal</code> that this portal is connected to. 
+	 * @param targetBoard name of the Board that target is on.
 	 */
 	public void connect(Vect target, String targetBoard) {
 		this.target = target;
@@ -215,9 +214,13 @@ public class Portal implements Gadget {
 	}
 	
 	/**
-	 * Connects the portal
+	 * Connects the portal to the <code>portal</code> targetPortal on the <code>board</code> targetBoard
+	 * @param targetBoard The flingball board on which the targetPortal is in play.
+	 * @param targetPortal The name of the target portal.
 	 */
-	public void connect(String targetBoard) {
+	public synchronized void connect(String target, String targetBoard) {
+		//TODO include target name 
+		// this.target = target;
 		this.targetBoard = targetBoard;
 		this.connected = true;
 	}
@@ -232,8 +235,7 @@ public class Portal implements Gadget {
 	
 	@Override
 	public String toString() {
-		//TODO include target board?
-		return "{PORTAL: " + name + " " + this.position() + " connected to portal at" + this.target + " on " + this.targetBoard + "}";
+		return "{PORTAL: " + name + " " + this.position() + " TARGET: " + this.target + " TARGETBOARD: " + this.targetBoard + "}";
 	}
 	
 	@Override

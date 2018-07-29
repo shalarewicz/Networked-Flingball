@@ -1,14 +1,14 @@
 package flingball;
 
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.swing.JFrame;
-
+/**
+ * An immutable class used to easily interpret a <code>KeyEvent</code>.
+ * @author Stephan Halarewicz
+ */
 public class KeyNames {
 
     public final static Map<Integer,String> keyName;
@@ -72,39 +72,6 @@ public class KeyNames {
         map.put(KeyEvent.VK_PERIOD, "period");
         map.put(KeyEvent.VK_SLASH, "slash");
         keyName = Collections.unmodifiableMap(map);
-    }
-    
-    public static void main(String[] args) {
-        JFrame win = new JFrame("KeyNames");
-        win.setSize(200, 200);
-        win.setVisible(true);
-
-        KeyListener listener = new KeyAdapter() {
-            @Override public void keyPressed(KeyEvent e) {
-                report("press", e.getKeyCode());
-            }
-
-            @Override public void keyReleased(KeyEvent e) {
-                report("release", e.getKeyCode());
-            }
-            
-            private void report(String whatHappened, int keyCode) {
-                System.out.println(
-                        whatHappened
-                        + " "
-                        + keyName.get(keyCode) // note: may return null, which will print "null"
-                        );
-                
-            }
-        };
-
-        // TODO: Decide if you want to use this. This is a workaround for a bug on linux problems where holding down a key causes repeated KeyEvents. 
-//        if (args.length > 0 && args[0].equals("--magic")) {
-//            System.err.println("turning on MagicKeyListener to work around Linux problem");
-//            listener = new MagicKeyListener(listener);
-//        }
-
-        win.addKeyListener(listener);
     }
 
 }

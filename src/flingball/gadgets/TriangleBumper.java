@@ -1,7 +1,3 @@
-/**
- * Author:
- * Date:
- */
 package flingball.gadgets;
 
 import java.awt.Color;
@@ -32,6 +28,7 @@ import physics.Vect;
  * The TriangleBumper can then be rotated 90 degrees clockwise to be put in the next Orientation
  * 
  * A TriangleBumper has no default action but can trigger a provided Board Action
+ * @author Stephan Halarewicz
  */
 public class TriangleBumper implements Bumper {
 	
@@ -45,7 +42,7 @@ public class TriangleBumper implements Bumper {
 	private Set<Wall> walls;
 	
 	private String trigger = Gadget.NO_TRIGGER;
-	private double reflectionCoeff = Gadget.DEFAULT_REFLECTION_COEFF;
+	private Double reflectionCoeff = Bumper.DEFAULT_REFLECTION_COEFF;
 	
 	/*
 	 * AF(x, y , orientation) - Triangle pumper with anchor x, -y and orientation named name
@@ -57,9 +54,11 @@ public class TriangleBumper implements Bumper {
 	 * 		0 <= reflectionCoeff <= 1
 	 * 
 	 * Safety from rep exposure
-	 * 		TODO
+	 * 		Only immutable or primitive types are ever returned. 
 	 * Thread Safety Argument
-	 * 		TODO
+	 * 		All fields except trigger and reflectionCoeff are final or immutable. 
+	 * 		The elements of the set walls are never modified and Wall is immutable. 
+	 * 		Locks are obtained before using or changing trigger or reflectionCoeff
 	 */
 
 	private void checkRep() {
@@ -85,11 +84,17 @@ public class TriangleBumper implements Bumper {
 			assert endPoints.get(v) == 2 : "TriangleBumper: " + name + " doesn't form a triangle";
 		}
 		
-		//TODO Check Triangle is in the right place given its orientation
 		assert endPoints.size() == 3;
 		assert 0 <= reflectionCoeff && reflectionCoeff <=1 : "SquareBumper: " + name + " invalid reflection coefficient";
 	}
 	
+	/**
+	 * Create a new triangle bumper at the position (x,y) on a flingball board with
+	 * <code>Orientation ZERO</code>.
+	 * @param name Name of the square bumper
+	 * @param x x-coordinate of the bumper on a flingball board
+	 * @param y y-coordinate of the bumper on a flingball board
+	 */
 	public TriangleBumper(String name, int x, int y) {
 		this.x = x;
 		this.y = -y;
@@ -102,6 +107,14 @@ public class TriangleBumper implements Bumper {
 		checkRep();
 	}
 	
+	/**
+	 * Create a new triangle bumper at the position (x,y) on a flingball board with 
+	 * the specified <code>Orientation</code>.
+	 * @param name Name of the square bumper
+	 * @param x x-coordinate of the bumper on a flingball board
+	 * @param y y-coordinate of the bumper on a flingball board
+	 * @param orientation Orientation of the Triangle Bumper.
+	 */
 	public TriangleBumper(String name, int x, int y, Orientation orientation) {
 		this.x = x;
 		this.y = -y;
@@ -169,12 +182,16 @@ public class TriangleBumper implements Bumper {
 
 	@Override
 	public double getReflectionCoefficient() {
-		return this.reflectionCoeff;
+		synchronized (this.reflectionCoeff) {
+			return this.reflectionCoeff;
+		}
 	}
 	
 	@Override
 	public void setReflectionCoefficient(double x) {
-		this.reflectionCoeff = x;
+		synchronized (this.reflectionCoeff) {
+			this.reflectionCoeff = x;
+		}
 	}
 
 	@Override
@@ -188,12 +205,16 @@ public class TriangleBumper implements Bumper {
 
 	@Override
 	public String getTrigger() {
-		return this.trigger;
+		synchronized (this.trigger) {
+			return this.trigger;
+		}
 	}
 	
 	@Override
 	public void setTrigger(String trigger) {
-		this.trigger = trigger;
+		synchronized (this.trigger) {
+			this.trigger = trigger;
+		}
 	}
 
 	@Override
@@ -267,8 +288,6 @@ public class TriangleBumper implements Bumper {
 				wall.reflectBall(ball);
 			}
 		}
-		
-	//	throw new RuntimeException("Should never get here. Ball did not collide with Triangle Bumper");
 	}
 	
 	@Override
