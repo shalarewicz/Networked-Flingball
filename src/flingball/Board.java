@@ -78,7 +78,6 @@ import physics.Vect;
  * 
  */
 public class Board {
-	
 
 	// Default Values
 	public static final int GADGET_LIMIT = 60;
@@ -96,15 +95,13 @@ public class Board {
 	private final Wall RIGHT = new Wall("RIGHT", WIDTH, 0, WIDTH, -HEIGHT);
 	private final int[][] gadgetCoverage = new int[WIDTH + 1][HEIGHT + 1];
 	
-
-	
 	// Default Constants
 	private double gravity = DEFAULT_GRAVITY;
 	private double friction1 = DEFAULT_FRICTION_1;
 	private double friction2 = DEFAULT_FRICTION_2;
 
 	// Objects on board
-	private List<Gadget> gadgets = new ArrayList<Gadget>();
+	private Set<Gadget> gadgets = ConcurrentHashMap.newKeySet();
 	private ConcurrentMap<Ball, BallListener> balls = new ConcurrentHashMap<Ball, BallListener>();
 	private Map<Portal, List<String>> portals = new HashMap<Portal, List<String>>();
 	private final Set<Wall> walls = new HashSet<Wall>(Arrays.asList(TOP, BOTTOM, LEFT, RIGHT));
@@ -116,14 +113,13 @@ public class Board {
 	
 	private ConcurrentMap<String, List<Gadget>> keyUpTriggers = new ConcurrentHashMap<String, List<Gadget>>();
 	private ConcurrentMap<String, List<Gadget>> keyDownTriggers = new ConcurrentHashMap<String, List<Gadget>>();
-	//TODO Support board actions for keys? This could allow the player to spam the board
+	//TODO Support board actions for keys? This could allow the player to spam the board. If I do, need to include a cool down period where that key cannot be pressed again for 30s
 	private ConcurrentMap<String, List<Action>> keyUpBoardTriggers = new ConcurrentHashMap<String, List<Action>>();
 	private ConcurrentMap<String, List<Action>> keyDownBoardTriggers = new ConcurrentHashMap<String, List<Action>>();
 	
 	// Track if the board is connected to server
 	private boolean connected = false;
 	// Listeners
-//	private Set<BallListener> ballListeners = new HashSet<BallListener>();
 	private final List<RequestListener> requestListeners = new ArrayList<RequestListener>();
 	
 	public final KeyAdapter keyListener = new KeyAdapter() {
@@ -133,6 +129,12 @@ public class Board {
 		@Override public void keyPressed(KeyEvent e) {
 			onKey(KeyNames.keyName.get(e.getKeyCode()), keyDownTriggers, keyDownBoardTriggers);
 		}
+		
+        // TODO: Decide if you want to use this. This is a workaround for a bug on linux problems where holding down a key causes repeated KeyEvents. 
+//      if (args.length > 0 && args[0].equals("--magic")) {
+//          System.err.println("turning on MagicKeyListener to work around Linux problem");
+//          listener = new MagicKeyListener(listener);
+//      }
 	};
 	
 	/*
@@ -212,8 +214,7 @@ public class Board {
 	 * @param friction1 value of mu1
 	 * @param friction2 value of mu2
 	 */
-	// TODO Should this be protected?
-	public Board(String name, double gravity, double friction1, double friction2) {
+	protected Board(String name, double gravity, double friction1, double friction2) {
 		this.NAME = name;
 		this.gravity = gravity;
 		this.friction1 = friction1;
@@ -224,17 +225,13 @@ public class Board {
 		checkRep();
 	}
 	
-	//Instance Methods
-	
 	/**
 	 * Adds a gadget to the flingball board using the gadgets position. If the Gadget has a position
 	 * not on the board, it is not added. 
 	 * @param gadget gadget to be added
 	 */
 	public void addGadget(Gadget gadget) {
-		//TODO Make Gadgets a set and assert addition to the set?
-		// This depends on how equality works
-		this.gadgets.add(gadget);
+		this.gadgets.add(gadget); // Gadgets are equal if they are of the same class and have the same position
 		this.setCoverage(gadget);
 		checkRep();	
 	}
@@ -287,9 +284,6 @@ public class Board {
 			return listener;
 		}
 	}
-	
-	
-	
 	
 	/**
 	 * Removes a ball to the flingball board. 
@@ -455,28 +449,12 @@ public class Board {
 	 * @param time length of time the board is played. 
 	 */
 	public void play(final double time) {
-		//TODO Add an event queue so that actions that could not be performed are performed at the earliest possible moment
 		for (Ball ball : this.balls.keySet()) {
 			this.balls.get(ball).onStart(time);
 		}
 			checkRep();
 	}
 	
-//	public void checkFlipperCollision(RightFlipper f, double time) {
-//		synchronized (f) {
-//			for (Ball ball : this.balls) {
-//				synchronized (ball) {
-//					final double collisionTime = f.collisionTime(ball);
-//					if (collisionTime < time) {
-//						ball.move(collisionTime, this.gravity, this.friction1, this.friction2);
-//						f.rotate(collisionTime);
-//						f.reflectBall(ball);
-//					}
-//				}
-//			}
-//		}
-//	}
-
 	/**
 	 * Moves one ball on the board for the given amount of time accounting for the effects of friction
 	 * and gravity. Any actions that are triggered during this time are taken. 
@@ -486,6 +464,10 @@ public class Board {
 	private void moveOneBall(Ball ball, final double time) {
 		final Gadget NO_COLLISION = new Wall("NO_COLLISION", 0, 0, 0, 0);
 		double collisionTime = Double.POSITIVE_INFINITY;
+		double ballCollisionTime = Double.POSITIVE_INFINITY;
+		final Ball NO_BALL_COLLISION = new Ball("NO_COLLISION", Vect.ZERO, Vect.ZERO);
+		Ball nextBall = NO_BALL_COLLISION;
+		
 		Gadget nextGadget = NO_COLLISION;
 		// Find the gadget with which the ball will collide next
 		for (Gadget gadget : this.gadgets) {
@@ -495,7 +477,26 @@ public class Board {
 			}
 		}
 		
-		// If the ball will not collide with the gadgets check the outer walls of the board. 
+		// Obtain a lock to prevent balls processing simultaneous collisions and simultaneous mutations to a ball
+		synchronized (this.balls) {
+				for (Ball b : this.balls.keySet()) {
+					if (b.isTrapped()) continue; // Skip collisions for balls stuck in absorbers. 
+						if (!ball.isTrapped() && ball.timeUntilBallCollision(b) < ballCollisionTime) {
+							ballCollisionTime = ball.timeUntilBallCollision(b);
+							nextBall = b;
+						}
+				}
+				
+				if (ballCollisionTime < time && ballCollisionTime < collisionTime && nextBall != NO_BALL_COLLISION) {
+					ball.move(ballCollisionTime, this.gravity, this.friction1, this.friction2);
+					nextBall.move(ballCollisionTime, this.gravity, this.friction1, this.friction2);
+					ball.reflectBall(nextBall);
+					moveOneBall(ball, time - ballCollisionTime);
+					return;
+			}
+		}
+		
+		// If the ball will not collide with a gadget or another ball check the outer walls of the board. 
 		if (nextGadget == NO_COLLISION) {
 			for (Gadget wall : this.walls) {
 				if (wall.collisionTime(ball) < collisionTime) {
@@ -505,63 +506,59 @@ public class Board {
 			}
 		}
 		
-		// TODO Ball Ball collisions should be calculated
-		// If a ball will collide during the play time perform the collision. 
-		
 		if (collisionTime <= time && nextGadget != NO_COLLISION) {
-			// Move ball to collision point
 			//TODO This causes a bug with flippers since they rotate in their own thread. 
 			// if the ball is moved the flipper will continue to rotate and can rotate past
 			// the collision point. reflect ball should just be an all inclusive method. 
 			// where it is given the collision time and total play time and moves the ball appropriately
 			synchronized (nextGadget) {
-
-			ball.move(collisionTime, this.gravity, this.friction1, this.friction2);
-			checkRep();
-			
-			// Check if the board is connected to another board and handle the ball transfer
-			if (this.neighbors.contains(nextGadget)) {
-				this.removeBall(ball);
-				//TODO This doesn't account for Gadgets right on the wall. Should probably do a collision check on the new board. 
-				Vect center = ball.getBoardCenter();
-				// TODO replace switch statement with usign the wall's position
-				switch (nextGadget.name()) {
-				case "TOP":{
-					ball.setBoardPosition(new Vect(center.x(), 20 - ball.getRadius()));
-					break;
-				}
-				case "BOTTOM":
-					ball.setBoardPosition(new Vect(center.x(), 0 + ball.getRadius()));
-					break;
-				case "LEFT":
-					ball.setBoardPosition(new Vect(20 - ball.getRadius(), center.y()));
-					break;
-				case "RIGHT":
-					ball.setBoardPosition(new Vect(ball.getRadius(), center.y())); 
-					break;
-				}
-				Vect velocity = ball.getVelocity();
-				center = ball.getBoardCenter();
-				String name = ball.name().replaceAll("\\s", "");  // Ball names cannot have any spaces. 
+				// Move ball to collision point
+				ball.move(collisionTime, this.gravity, this.friction1, this.friction2);
+				checkRep();
 				
-				this.notifyRequestListeners("addBall " + nextGadget.name() + " " + name + " " + center.x() + " " + center.y() + " " + velocity.x() + " " + velocity.y());
-				return;
-				
-			} else if (nextGadget instanceof Portal 
-					&& ((Portal) nextGadget).isConnected()
-					&& !((Portal) nextGadget).getTargetBboard().equals(this.NAME) 
-					) {
-				if (this.connected) {
-					// If the ball hits a connected portal teleport it to the appropriate board. 
+				// Check if the board is connected to another board and handle the ball transfer
+				if (this.neighbors.contains(nextGadget)) {
 					this.removeBall(ball);
-					this.notifyRequestListeners("teleport " + nextGadget.name() + " " + ball.name() + " " + 
-							ball.getVelocity().x() + " " + ball.getVelocity().y());
+					//TODO This doesn't account for Gadgets right on the wall. Should probably do a collision check on the new board. 
+					Vect center = ball.getBoardCenter();
+					// TODO replace switch statement with using the wall's position
+					switch (nextGadget.name()) {
+					case "TOP":{
+						ball.setBoardPosition(new Vect(center.x(), 20 - ball.getRadius()));
+						break;
+					}
+					case "BOTTOM":
+						ball.setBoardPosition(new Vect(center.x(), 0 + ball.getRadius()));
+						break;
+					case "LEFT":
+						ball.setBoardPosition(new Vect(20 - ball.getRadius(), center.y()));
+						break;
+					case "RIGHT":
+						ball.setBoardPosition(new Vect(ball.getRadius(), center.y())); 
+						break;
+					}
+					Vect velocity = ball.getVelocity();
+					center = ball.getBoardCenter();
+					String name = ball.name().replaceAll("\\s", "");  // Ball names cannot have any spaces. 
+					
+					this.notifyRequestListeners("addBall " + nextGadget.name() + " " + name + " " + center.x() + " " + center.y() + " " + velocity.x() + " " + velocity.y());
+					return;
+					
+				} else if (nextGadget instanceof Portal 
+						&& ((Portal) nextGadget).isConnected()
+						&& !((Portal) nextGadget).getTargetBboard().equals(this.NAME) 
+						) {
+					if (this.connected) {
+						// If the ball hits a connected portal teleport it to the appropriate board. 
+						this.removeBall(ball);
+						this.notifyRequestListeners("teleport " + nextGadget.name() + " " + ball.name() + " " + 
+								ball.getVelocity().x() + " " + ball.getVelocity().y());
+					}
+					
+					
+				} else {
+					nextGadget.reflectBall(ball);
 				}
-				
-				
-			} else {
-				nextGadget.reflectBall(ball);
-			}
 			}
 			
 			// Perform any actions triggered by the collision
@@ -693,12 +690,13 @@ public class Board {
 	}
 	
 	/**
-	 * Sets the coverate for a given gadget. 
+	 * Sets the coverage for a given gadget. 
 	 * @param gadget
 	 */
 	private void setCoverage(Gadget gadget) {
 		// TODO This is a good place to practice the visitor method since absorbers cover a different area
-		// TODO Remove setCoverage from Gadget to prevent rep exposure. 
+		// Remove setCoverage from Gadget to prevent rep exposure. Only necessary when adding ball's or flippers. 
+		// Can accomplish the same tasks using position(), width() and height(). 
 		final int height = gadget.height();
 		final int width = gadget.width();
 		final int x = (int) gadget.position().x();
@@ -786,11 +784,12 @@ public class Board {
 				 }
 		 }
 		 case "CONNECT": {
-			 // connect source targetBoard
+			 // connect source target targetBoard
 			 // server says the portal with name source is connected to a portal on targetBoard
 			 String portal = tokens[1];
-			 String targetBoard = tokens[2];
-			 this.getPortal(portal).connect(targetBoard);
+			 String target = tokens[2];
+			 String targetBoard = tokens[3];
+			 this.getPortal(portal).connect(target, targetBoard);
 			 break;
 		 }
 		 
@@ -862,12 +861,5 @@ public class Board {
 	void setSingleplaer() {
 		this.connected = false;
 	}
-	
-	
-	
-	
-	
-	
-	
 	
 }
