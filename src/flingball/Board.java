@@ -122,20 +122,16 @@ public class Board {
 	// Listeners
 	private final List<RequestListener> requestListeners = new ArrayList<RequestListener>();
 	
-	public final KeyAdapter keyListener = new KeyAdapter() {
+	// MagicKeyListener accounts for a bug in Linux where holding down a key causes repeated keyPressed
+	// and keyReleased events. 
+	public final MagicKeyListener keyListener = new MagicKeyListener(new KeyAdapter() {
 		@Override public void keyReleased(KeyEvent e) {
 			onKey(KeyNames.keyName.get(e.getKeyCode()), keyUpTriggers, keyUpBoardTriggers);
 		}
 		@Override public void keyPressed(KeyEvent e) {
 			onKey(KeyNames.keyName.get(e.getKeyCode()), keyDownTriggers, keyDownBoardTriggers);
 		}
-		
-        // TODO: Decide if you want to use this. This is a workaround for a bug on linux problems where holding down a key causes repeated KeyEvents. 
-//      if (args.length > 0 && args[0].equals("--magic")) {
-//          System.err.println("turning on MagicKeyListener to work around Linux problem");
-//          listener = new MagicKeyListener(listener);
-//      }
-	};
+	});
 	
 	/*
 	 * AF(height, width, gadgets, balls, triggers, neighbors) ::= 
@@ -519,23 +515,24 @@ public class Board {
 				// Check if the board is connected to another board and handle the ball transfer
 				if (this.neighbors.contains(nextGadget)) {
 					this.removeBall(ball);
-					//TODO This doesn't account for Gadgets right on the wall. Should probably do a collision check on the new board. 
 					Vect center = ball.getBoardCenter();
-					// TODO replace switch statement with using the wall's position
-					switch (nextGadget.name()) {
-					case "TOP":{
-						ball.setBoardPosition(new Vect(center.x(), 20 - ball.getRadius()));
-						break;
-					}
-					case "BOTTOM":
-						ball.setBoardPosition(new Vect(center.x(), 0 + ball.getRadius()));
-						break;
-					case "LEFT":
-						ball.setBoardPosition(new Vect(20 - ball.getRadius(), center.y()));
-						break;
-					case "RIGHT":
-						ball.setBoardPosition(new Vect(ball.getRadius(), center.y())); 
-						break;
+					switch (Border.fromString(nextGadget.name())) {
+						case TOP:{
+							ball.setBoardPosition(new Vect(center.x(), this.HEIGHT - ball.getRadius()));
+							break;
+						}
+						case BOTTOM: {
+							ball.setBoardPosition(new Vect(center.x(), ball.getRadius()));
+							break;
+						}
+						case LEFT: {
+							ball.setBoardPosition(new Vect(this.HEIGHT - ball.getRadius(), center.y()));
+							break;
+						}
+						case RIGHT: {
+							ball.setBoardPosition(new Vect(ball.getRadius(), center.y())); 
+							break;
+						}
 					}
 					Vect velocity = ball.getVelocity();
 					center = ball.getBoardCenter();
@@ -758,6 +755,8 @@ public class Board {
 		 }
 		 
 		 case "ADD": {
+			//TODO This doesn't account for Gadgets right on the wall when a ball comes from a neighbor
+			//  Should probably do a collision check on the new board and send it back if necessary
 			 String name = tokens[1];
 			 double x = Double.parseDouble(tokens[2]);
 			 double y = Double.parseDouble(tokens[3]);
